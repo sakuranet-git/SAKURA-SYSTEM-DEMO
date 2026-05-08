@@ -1,0 +1,87 @@
+[
+  {
+    "id": "inv-demo-001",
+    "invoiceNumber": "DEMO-2026-001",
+    "status": "送付済み",
+    "invDate": "2026-01-31",
+    "billingMonth": "2026-01",
+    "clientName": "架空商事株式会社",
+    "clientContact": "田中デモ 様",
+    "clientEmail": "info-kakuu@example.com",
+    "clientAddress": "デモ県デモ市架空町1-2-3",
+    "paymentMethod": "銀行振込",
+    "note": "光回線開通工事費用",
+    "items": [
+      { "name": "光回線開通工事費", "qty": 1, "unit": "式", "price": 50000 },
+      { "name": "出張費", "qty": 1, "unit": "式", "price": 5000 }
+    ],
+    "subtotal": 55000,
+    "tax": 5500,
+    "total": 60500,
+    "isDemo": true
+  },
+  {
+    "id": "inv-demo-002",
+    "invoiceNumber": "DEMO-2026-002",
+    "status": "未送付",
+    "invDate": "2026-02-28",
+    "billingMonth": "2026-02",
+    "clientName": "サンプル歯科クリニック",
+    "clientContact": "鈴木デモ 先生",
+    "clientEmail": "sample-dental@example.com",
+    "clientAddress": "デモ県デモ市サンプル町4-5-6",
+    "paymentMethod": "銀行振込",
+    "note": "光回線工事・機器費用",
+    "items": [
+      { "name": "光回線開通工事費", "qty": 1, "unit": "式", "price": 30000 },
+      { "name": "出張費", "qty": 1, "unit": "式", "price": 3000 },
+      { "name": "LANケーブル", "qty": 2, "unit": "本", "price": 1000 }
+    ],
+    "subtotal": 35000,
+    "tax": 3500,
+    "total": 38500,
+    "isDemo": true
+  },
+  {
+    "id": "inv-demo-003",
+    "invoiceNumber": "DEMO-2026-003",
+    "status": "入金済み",
+    "invDate": "2026-01-31",
+    "billingMonth": "2026-01",
+    "clientName": "テスト不動産有限会社",
+    "clientContact": "佐藤デモ 様",
+    "clientEmail": "test-fudosan@example.com",
+    "clientAddress": "デモ県デモ市テスト通り7-8-9",
+    "paymentMethod": "銀行振込",
+    "note": "光回線・サーバー設定費用",
+    "items": [
+      { "name": "光回線開通工事費", "qty": 1, "unit": "式", "price": 80000 },
+      { "name": "サーバー設定費", "qty": 1, "unit": "式", "price": 5000 }
+    ],
+    "subtotal": 85000,
+    "tax": 8500,
+    "total": 93500,
+    "isDemo": true
+  },
+  {
+    "id": "inv-demo-004",
+    "invoiceNumber": "DEMO-2026-004",
+    "status": "送付済み",
+    "invDate": "2026-03-31",
+    "billingMonth": "2026-03",
+    "clientName": "モックアップ美容室",
+    "clientContact": "高橋デモ 様",
+    "clientEmail": "mock-beauty@example.com",
+    "clientAddress": "デモ県サンプル市ダミー街10-11",
+    "paymentMethod": "現金",
+    "note": "Wifi障害対応",
+    "items": [
+      { "name": "出張サポート費", "qty": 1, "unit": "式", "price": 20000 },
+      { "name": "出張費", "qty": 1, "unit": "式", "price": 8000 }
+    ],
+    "subtotal": 28000,
+    "tax": 2800,
+    "total": 30800,
+    "isDemo": true
+  }
+]
