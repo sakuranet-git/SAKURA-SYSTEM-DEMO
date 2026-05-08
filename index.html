@@ -210,6 +210,51 @@
     margin-top: 20px;
   }
 
+  .manual-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: #f2f9ff;
+    border: 1px solid rgba(0,117,222,0.18);
+    border-radius: 8px;
+    text-decoration: none;
+    color: rgba(0,0,0,0.95);
+    transition: all 0.15s;
+  }
+
+  .manual-link:hover {
+    background: #e7f3ff;
+    border-color: #0075de;
+    transform: translateY(-1px);
+  }
+
+  .manual-link-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .manual-link-content { flex: 1; }
+
+  .manual-link-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(0,0,0,0.95);
+  }
+
+  .manual-link-desc {
+    font-size: 12px;
+    color: #615d59;
+    margin-top: 2px;
+  }
+
+  .manual-link-arrow {
+    color: #0075de;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
   @media (max-width: 520px) {
     .card { padding: 28px 20px; }
     .logo .brand { font-size: 22px; }
@@ -262,6 +307,15 @@
     <li>請求書システム（PDF出力・DEMO透かし）</li>
     <li>データは本番環境と完全分離</li>
   </ul>
+
+  <a href="manual-user.html" target="_blank" class="manual-link">
+    <div class="manual-link-icon">📖</div>
+    <div class="manual-link-content">
+      <div class="manual-link-title">はじめての方へ</div>
+      <div class="manual-link-desc">使い方ガイドを見る</div>
+    </div>
+    <div class="manual-link-arrow">→</div>
+  </a>
 </div>
 
 <p class="footer-note">© SAKURA NET | デモ環境 — 顧客情報の入力はお控えください</p>
