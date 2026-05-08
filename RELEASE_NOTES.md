@@ -1,5 +1,19 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.1.1 (2026-05-08) — シードデータ投入完了
+
+### 修正
+- `tools/seed-firestore.html` に Firebase Anonymous Auth を追加（匿名認証後にFirestore書き込み）
+- `firestore.rules` を isAuthed() + hasIsDemo() パターンに簡略化
+- Firebase Console: 匿名認証プロバイダ有効化・Firestoreルール更新
+
+### 投入データ確認済み
+- 招待コード 3件（SAKURA-DEMO-2026 / SAKURA-OEM-001 / SAKURA-AGENT-001）
+- 架空顧客データ 5件
+- 架空請求書データ 4件
+
+---
+
 ## v0.1.0 (2026-05-08) — 初回構築
 
 ### Phase A: 準備

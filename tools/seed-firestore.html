@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Firestore シードデータ投入ツール</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="../firebase-config.demo.js"></script>
 <style>
@@ -63,6 +64,10 @@ async function runSeed() {
     if (!firebase.apps.length) firebase.initializeApp(DEMO_FIREBASE_CONFIG);
     const db = firebase.firestore();
     addLog(`✓ Firebase 接続: ${DEMO_FIREBASE_CONFIG.projectId}`, 'ok');
+
+    // 匿名認証（Firestore Rules: isAuthed() が必要）
+    await firebase.auth().signInAnonymously();
+    addLog('✓ 匿名認証 完了', 'ok');
 
     // 招待コード
     addLog('\n--- 招待コード ---');

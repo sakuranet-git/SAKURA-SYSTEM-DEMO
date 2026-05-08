@@ -2,9 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // デモユーザー判定（Custom Claims: isDemo = true）
-    function isDemoUser() {
-      return request.auth != null && request.auth.token.isDemo == true;
+    // 認証済み判定
+    function isAuthed() {
+      return request.auth != null;
     }
 
     // isDemo フラグ付きデータのみ書き込み許可
@@ -12,20 +12,40 @@ service cloud.firestore {
       return request.resource.data.isDemo == true;
     }
 
-    // customer_records: デモユーザーのみ読み書き可（isDemoフラグ必須）
+    // customer_records: 認証済み + isDemoフラグ必須
     match /customer_records/{docId} {
-      allow read: if isDemoUser();
-      allow write: if isDemoUser() && hasIsDemo();
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
     }
 
-    // invoices: デモユーザーのみ読み書き可（isDemoフラグ必須）
+    // invoices: 認証済み + isDemoフラグ必須
     match /invoices/{docId} {
-      allow read: if isDemoUser();
-      allow write: if isDemoUser() && hasIsDemo();
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
     }
 
-    // invitation_codes: 未認証でも読み取り可（招待コード検証用）・書き込み不可
+    // invitation_codes: 誰でも読み可・認証済み+isDemoフラグで書き込み可
     match /invitation_codes/{codeId} {
+      allow read: if true;
+      allow write: if isAuthed() && hasIsDemo();
+    }
+
+    // audit_log / mail_log / demo_reset_log: 認証済み+isDemoフラグ
+    match /audit_log/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
+    }
+    match /mail_log/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
+    }
+    match /demo_reset_log/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed();
+    }
+
+    // demo_config: 誰でも読み可（緊急停止チェック用）
+    match /demo_config/{docId} {
       allow read: if true;
       allow write: if false;
     }
