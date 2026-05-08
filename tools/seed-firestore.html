@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Firestore シードデータ投入ツール</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="../firebase-config.demo.js"></script>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+  button { background:#0075de; color:#fff; border:none; padding:12px 24px; border-radius:6px; font-size:15px; cursor:pointer; }
+  button:disabled { background:#999; cursor:not-allowed; }
+  #log { margin-top:20px; background:#f6f5f4; border-radius:6px; padding:16px; font-size:13px; line-height:1.8; white-space:pre-wrap; min-height:100px; }
+  .ok { color: #1aae39; }
+  .err { color: #d32f2f; }
+</style>
+</head>
+<body>
+<h2>🌸 Firestore シードデータ投入</h2>
+<p style="color:#615d59;margin:12px 0;">デモ用の招待コード・顧客データ・請求書データを Firebase に投入します。<br>
+<strong>初回セットアップ時に一度だけ実行してください。</strong></p>
+<button id="seedBtn" onclick="runSeed()">シードデータを投入する</button>
+<div id="log">実行ボタンを押してください...</div>
+
+<script>
+const log = document.getElementById('log');
+const btn = document.getElementById('seedBtn');
+
+function addLog(msg, type) {
+  const span = document.createElement('span');
+  span.className = type || '';
+  span.textContent = msg + '\n';
+  log.appendChild(span);
+}
+
+const invitationCodes = [
+  { id: 'SAKURA-DEMO-2026', label: '一般デモ用', disabled: false, expiresAt: null, useCount: 0, isDemo: true },
+  { id: 'SAKURA-OEM-001',   label: 'OEMパートナー候補A社', disabled: false, expiresAt: null, useCount: 0, isDemo: true },
+  { id: 'SAKURA-AGENT-001', label: '代理店候補B社', disabled: false, expiresAt: null, useCount: 0, isDemo: true }
+];
+
+const customers = [
+  { id:'demo-001', status:'完了', dateReq:'2026-01-10', dateWork:'2026-01-20', timeWorkStart:'10:00', timeWorkEnd:'12:00', taskType:'光回線開通', name:'架空商事株式会社', kana:'カクウショウジカブシキガイシャ', email:'info-kakuu@example.com', agency:'デモ代理店A', staff:'田中デモ', tel1:'000-0000-0001', tel2:'', zip:'000-0001', address:'デモ県デモ市架空町1-2-3', plan:'SAKURA-NET光 10G', cafNumber:'DEMO-CAF-001', accessKey:'DEMO-KEY-001', provider:'さくらデモプロバイダ', constDate:'2026-01-20', pcCount:'5', connStatus:'開通済み', wanLanIp:'192.168.0.1', routerIp:'192.168.0.254', wifiIp:'192.168.0.253', mailIdPass:'demo@example.com / demopass', serverIp:'', serverUserPass:'', copierIp:'192.168.0.100', memo:'デモ用サンプルデータです', feeBase:'50000', feeTravel:'5000', feeParts:'0', amount:'55000', isDemo:true },
+  { id:'demo-002', status:'工事', dateReq:'2026-02-05', dateWork:'2026-02-15', timeWorkStart:'13:00', timeWorkEnd:'16:00', taskType:'光回線開通', name:'サンプル歯科クリニック', kana:'サンプルシカクリニック', email:'sample-dental@example.com', agency:'デモ代理店B', staff:'鈴木デモ', tel1:'000-0000-0002', tel2:'000-0000-0022', zip:'000-0002', address:'デモ県デモ市サンプル町4-5-6', plan:'SAKURA-NET光 1G', cafNumber:'DEMO-CAF-002', accessKey:'DEMO-KEY-002', provider:'さくらデモプロバイダ', constDate:'2026-02-15', pcCount:'3', connStatus:'工事待ち', wanLanIp:'', routerIp:'', wifiIp:'', mailIdPass:'', serverIp:'', serverUserPass:'', copierIp:'', memo:'受付システム用に安定した回線が必要', feeBase:'30000', feeTravel:'3000', feeParts:'2000', amount:'35000', isDemo:true },
+  { id:'demo-003', status:'完了', dateReq:'2026-01-20', dateWork:'2026-01-28', timeWorkStart:'09:00', timeWorkEnd:'11:30', taskType:'リモート設定', name:'テスト不動産有限会社', kana:'テストフドウサンユウゲンガイシャ', email:'test-fudosan@example.com', agency:'デモ代理店A', staff:'佐藤デモ', tel1:'000-0000-0003', tel2:'', zip:'000-0003', address:'デモ県デモ市テスト通り7-8-9', plan:'SAKURA-NET光 10G', cafNumber:'DEMO-CAF-003', accessKey:'DEMO-KEY-003', provider:'さくらデモプロバイダ', constDate:'2026-01-28', pcCount:'8', connStatus:'開通済み', wanLanIp:'192.168.1.1', routerIp:'192.168.1.254', wifiIp:'192.168.1.253', mailIdPass:'realestate@example.com / demopass2', serverIp:'192.168.1.10', serverUserPass:'admin / demoserver', copierIp:'192.168.1.50', memo:'ファイルサーバーとの連携設定が必要', feeBase:'80000', feeTravel:'0', feeParts:'5000', amount:'85000', isDemo:true },
+  { id:'demo-004', status:'出張サポート', dateReq:'2026-03-01', dateWork:'2026-03-10', timeWorkStart:'14:00', timeWorkEnd:'17:00', taskType:'出張サポート', name:'モックアップ美容室', kana:'モックアップビヨウシツ', email:'mock-beauty@example.com', agency:'デモ代理店C', staff:'高橋デモ', tel1:'000-0000-0004', tel2:'', zip:'000-0004', address:'デモ県サンプル市ダミー街10-11', plan:'SAKURA-NET光 1G', cafNumber:'DEMO-CAF-004', accessKey:'DEMO-KEY-004', provider:'さくらデモプロバイダ', constDate:'2026-02-20', pcCount:'2', connStatus:'開通済み', wanLanIp:'192.168.2.1', routerIp:'192.168.2.254', wifiIp:'192.168.2.253', mailIdPass:'', serverIp:'', serverUserPass:'', copierIp:'', memo:'予約システムのWifi接続トラブル', feeBase:'20000', feeTravel:'8000', feeParts:'0', amount:'28000', isDemo:true },
+  { id:'demo-005', status:'未設定', dateReq:'2026-04-01', dateWork:'', timeWorkStart:'', timeWorkEnd:'', taskType:'光回線開通', name:'デモ製造株式会社', kana:'デモセイゾウカブシキガイシャ', email:'demo-mfg@example.com', agency:'デモ代理店B', staff:'伊藤デモ', tel1:'000-0000-0005', tel2:'000-0000-0055', zip:'000-0005', address:'デモ県テスト市架空工業団地1-1', plan:'SAKURA-NET光 10G', cafNumber:'DEMO-CAF-005', accessKey:'', provider:'さくらデモプロバイダ', constDate:'', pcCount:'20', connStatus:'申込済み', wanLanIp:'', routerIp:'', wifiIp:'', mailIdPass:'', serverIp:'', serverUserPass:'', copierIp:'', memo:'工場内ネットワーク全体の見直し予定', feeBase:'150000', feeTravel:'10000', feeParts:'30000', amount:'190000', isDemo:true }
+];
+
+const invoices = [
+  { id:'inv-demo-001', invoiceNumber:'DEMO-2026-001', status:'送付済み', invDate:'2026-01-31', billingMonth:'2026-01', clientName:'架空商事株式会社', clientContact:'田中デモ 様', clientEmail:'info-kakuu@example.com', clientAddress:'デモ県デモ市架空町1-2-3', paymentMethod:'銀行振込', note:'光回線開通工事費用', items:[{name:'光回線開通工事費',qty:1,unit:'式',price:50000},{name:'出張費',qty:1,unit:'式',price:5000}], subtotal:55000, tax:5500, total:60500, isDemo:true },
+  { id:'inv-demo-002', invoiceNumber:'DEMO-2026-002', status:'未送付', invDate:'2026-02-28', billingMonth:'2026-02', clientName:'サンプル歯科クリニック', clientContact:'鈴木デモ 先生', clientEmail:'sample-dental@example.com', clientAddress:'デモ県デモ市サンプル町4-5-6', paymentMethod:'銀行振込', note:'光回線工事・機器費用', items:[{name:'光回線開通工事費',qty:1,unit:'式',price:30000},{name:'出張費',qty:1,unit:'式',price:3000},{name:'LANケーブル',qty:2,unit:'本',price:1000}], subtotal:35000, tax:3500, total:38500, isDemo:true },
+  { id:'inv-demo-003', invoiceNumber:'DEMO-2026-003', status:'入金済み', invDate:'2026-01-31', billingMonth:'2026-01', clientName:'テスト不動産有限会社', clientContact:'佐藤デモ 様', clientEmail:'test-fudosan@example.com', clientAddress:'デモ県デモ市テスト通り7-8-9', paymentMethod:'銀行振込', note:'光回線・サーバー設定費用', items:[{name:'光回線開通工事費',qty:1,unit:'式',price:80000},{name:'サーバー設定費',qty:1,unit:'式',price:5000}], subtotal:85000, tax:8500, total:93500, isDemo:true },
+  { id:'inv-demo-004', invoiceNumber:'DEMO-2026-004', status:'送付済み', invDate:'2026-03-31', billingMonth:'2026-03', clientName:'モックアップ美容室', clientContact:'高橋デモ 様', clientEmail:'mock-beauty@example.com', clientAddress:'デモ県サンプル市ダミー街10-11', paymentMethod:'現金', note:'Wifi障害対応', items:[{name:'出張サポート費',qty:1,unit:'式',price:20000},{name:'出張費',qty:1,unit:'式',price:8000}], subtotal:28000, tax:2800, total:30800, isDemo:true }
+];
+
+async function runSeed() {
+  btn.disabled = true;
+  log.textContent = '';
+  addLog('シードデータ投入を開始します...');
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+    const db = firebase.firestore();
+    addLog(`✓ Firebase 接続: ${DEMO_FIREBASE_CONFIG.projectId}`, 'ok');
+
+    // 招待コード
+    addLog('\n--- 招待コード ---');
+    for (const code of invitationCodes) {
+      await db.collection('invitation_codes').doc(code.id).set(code);
+      addLog(`✓ ${code.id} (${code.label})`, 'ok');
+    }
+
+    // 顧客データ
+    addLog('\n--- 顧客データ ---');
+    for (const c of customers) {
+      await db.collection('customer_records').doc(c.id).set({ ...c, seededAt: firebase.firestore.FieldValue.serverTimestamp() });
+      addLog(`✓ ${c.name}`, 'ok');
+    }
+
+    // 請求書データ
+    addLog('\n--- 請求書データ ---');
+    for (const inv of invoices) {
+      await db.collection('invoices').doc(inv.id).set({ ...inv, seededAt: firebase.firestore.FieldValue.serverTimestamp() });
+      addLog(`✓ ${inv.invoiceNumber} (${inv.clientName})`, 'ok');
+    }
+
+    addLog('\n✅ 全データの投入が完了しました！', 'ok');
+    addLog('このページを閉じてデモ環境をご利用ください。');
+
+  } catch(e) {
+    addLog('\n❌ エラー: ' + e.message, 'err');
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
