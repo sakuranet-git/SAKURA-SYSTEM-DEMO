@@ -1,0 +1,5 @@
+firebase-config.demo.js
+*.env
+*.secret
+node_modules/
+trash/
