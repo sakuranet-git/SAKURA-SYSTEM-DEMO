@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <!-- DEMO設定（gitignore済み・サーバーに別途アップロード） -->
 <script src="firebase-config.demo.js"></script>
@@ -326,6 +327,9 @@
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
         db.useEmulator('127.0.0.1', 8080);
       }
+
+      // 匿名認証（招待コード更新に必要）
+      await firebase.auth().signInAnonymously();
 
       // 招待コード確認
       const snap = await db.collection('invitation_codes').doc(code).get();

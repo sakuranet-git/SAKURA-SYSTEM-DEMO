@@ -1,5 +1,14 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.1.2 (2026-05-08) — ログイン認証エラー修正
+
+### 修正
+- `index.html` に Firebase Auth SDK 追加（firebase-auth.js）
+- `startDemo()` に匿名認証（signInAnonymously）を追加
+- 招待コード使用回数の更新（Firestore write）が認証エラーで失敗していた問題を修正
+
+---
+
 ## v0.1.1 (2026-05-08) — シードデータ投入完了
 
 ### 修正
