@@ -1,0 +1,26 @@
+[
+  {
+    "id": "SAKURA-DEMO-2026",
+    "label": "一般デモ用",
+    "disabled": false,
+    "expiresAt": null,
+    "useCount": 0,
+    "isDemo": true
+  },
+  {
+    "id": "SAKURA-OEM-001",
+    "label": "OEMパートナー候補A社",
+    "disabled": false,
+    "expiresAt": null,
+    "useCount": 0,
+    "isDemo": true
+  },
+  {
+    "id": "SAKURA-AGENT-001",
+    "label": "代理店候補B社",
+    "disabled": false,
+    "expiresAt": null,
+    "useCount": 0,
+    "isDemo": true
+  }
+]

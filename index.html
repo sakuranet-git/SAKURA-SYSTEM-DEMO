@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAKURA SYSTEM デモ環境</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<!-- DEMO設定（gitignore済み・サーバーに別途アップロード） -->
+<script src="firebase-config.demo.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    background: #f6f5f4;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: rgba(0,0,0,0.95);
+  }
+
+  .demo-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #d32f2f;
+    color: #fff;
+    text-align: center;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 1000;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: rgba(0,0,0,0.04) 0px 4px 18px, rgba(0,0,0,0.027) 0px 2px 7px, rgba(0,0,0,0.02) 0px 0.8px 2.9px;
+    padding: 48px;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 34px;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .logo .brand {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: rgba(0,0,0,0.95);
+  }
+
+  .logo .badge {
+    display: inline-block;
+    background: #f2f9ff;
+    color: #097fe8;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .logo .sub {
+    font-size: 14px;
+    color: #615d59;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(0,0,0,0.1);
+    margin: 24px 0;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #615d59;
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 6px;
+    font-size: 15px;
+    font-family: inherit;
+    color: rgba(0,0,0,0.95);
+    background: #fff;
+    transition: border-color 0.15s;
+    letter-spacing: 1px;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: #0075de;
+    box-shadow: 0 0 0 2px rgba(0,117,222,0.12);
+  }
+
+  .terms-box {
+    background: #f6f5f4;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    padding: 14px;
+    margin: 16px 0;
+    font-size: 12px;
+    color: #615d59;
+    max-height: 140px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+
+  .agree-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .agree-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #0075de;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #0075de;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.15s;
+  }
+
+  .btn-primary:hover:not(:disabled) { background: #005bab; }
+  .btn-primary:disabled { background: #a39e98; cursor: not-allowed; }
+
+  .error-msg {
+    display: none;
+    background: #fff5f0;
+    border: 1px solid #dd5b00;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #dd5b00;
+    margin-top: 12px;
+  }
+
+  .loading-msg {
+    display: none;
+    text-align: center;
+    font-size: 13px;
+    color: #615d59;
+    margin-top: 12px;
+  }
+
+  .feature-list {
+    list-style: none;
+    margin-top: 24px;
+    padding: 0;
+  }
+
+  .feature-list li {
+    font-size: 13px;
+    color: #615d59;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .feature-list li::before {
+    content: "✓";
+    color: #1aae39;
+    font-weight: 700;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: #a39e98;
+    margin-top: 20px;
+  }
+
+  @media (max-width: 520px) {
+    .card { padding: 28px 20px; }
+    .logo .brand { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">⚠️ これはデモ環境です — 実際の顧客データは含まれていません</div>
+
+<div class="card">
+  <div class="logo">
+    <div class="brand">🌸 SAKURA SYSTEM</div>
+    <div class="badge">DEMO</div>
+    <p class="sub">OEM・代理店パートナー向けデモ環境<br>実際の運用画面をそのまま体験いただけます</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <label for="inviteCode">招待コード</label>
+    <input type="text" id="inviteCode" placeholder="例: SAKURA-DEMO-XXXX" maxlength="30" autocomplete="off">
+  </div>
+
+  <div style="margin-top: 20px;">
+    <label>デモ利用規約</label>
+    <div class="terms-box">
+      <strong>SAKURA SYSTEM デモ環境 利用規約</strong><br><br>
+      1. 本デモ環境は、SAKURA NETの OEM・代理店パートナー候補の方向けに提供されます。<br>
+      2. 本デモ環境で取り扱うデータは架空のものです。実在の個人・企業とは一切関係ありません。<br>
+      3. デモ環境は本番環境と完全に分離されており、入力したデータが本番環境に影響を与えることはありません。<br>
+      4. 招待コードは第三者に共有しないでください。<br>
+      5. 取得したスクリーンショット・情報の外部公開は禁止します。<br>
+      6. デモデータは定期的に自動リセットされます。<br>
+      7. 本デモ環境の利用は評価目的に限ります。
+    </div>
+    <label class="agree-row">
+      <input type="checkbox" id="agreeCheck">
+      <span>上記の利用規約に同意します</span>
+    </label>
+  </div>
+
+  <button class="btn-primary" id="startBtn" disabled onclick="startDemo()">デモを開始する</button>
+
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="loading-msg" id="loadingMsg">招待コードを確認中...</div>
+
+  <ul class="feature-list">
+    <li>顧客管理システム（架空データ入り）</li>
+    <li>請求書システム（PDF出力・DEMO透かし）</li>
+    <li>データは本番環境と完全分離</li>
+  </ul>
+</div>
+
+<p class="footer-note">© SAKURA NET | デモ環境 — 顧客情報の入力はお控えください</p>
+
+<script>
+  const agreeCheck = document.getElementById('agreeCheck');
+  const inviteCode = document.getElementById('inviteCode');
+  const startBtn = document.getElementById('startBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const loadingMsg = document.getElementById('loadingMsg');
+
+  function updateBtn() {
+    startBtn.disabled = !(agreeCheck.checked && inviteCode.value.trim().length >= 4);
+  }
+
+  agreeCheck.addEventListener('change', updateBtn);
+  inviteCode.addEventListener('input', updateBtn);
+  inviteCode.addEventListener('keydown', e => { if (e.key === 'Enter' && !startBtn.disabled) startDemo(); });
+
+  // 既にセッションがある場合はスキップ
+  if (sessionStorage.getItem('demo_authorized') === 'true') {
+    window.location.href = 'ordersystem.html';
+  }
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+    loadingMsg.style.display = 'none';
+    startBtn.disabled = false;
+  }
+
+  async function startDemo() {
+    const code = inviteCode.value.trim().toUpperCase();
+    if (!code || !agreeCheck.checked) return;
+
+    startBtn.disabled = true;
+    errorMsg.style.display = 'none';
+    loadingMsg.style.display = 'block';
+
+    try {
+      // Firebase 初期化
+      if (!firebase.apps.length) {
+        firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+      }
+      const db = firebase.firestore();
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        db.useEmulator('127.0.0.1', 8080);
+      }
+
+      // 招待コード確認
+      const snap = await db.collection('invitation_codes').doc(code).get();
+      if (!snap.exists) {
+        showError('招待コードが無効です。お確かめの上、再入力してください。');
+        return;
+      }
+
+      const data = snap.data();
+      if (data.disabled) {
+        showError('この招待コードは無効化されています。');
+        return;
+      }
+
+      if (data.expiresAt && data.expiresAt.toDate() < new Date()) {
+        showError('この招待コードは有効期限が切れています。');
+        return;
+      }
+
+      // セッション承認
+      sessionStorage.setItem('demo_authorized', 'true');
+      sessionStorage.setItem('demo_code', code);
+      sessionStorage.setItem('demo_label', data.label || 'デモユーザー');
+
+      // 使用記録を更新
+      await db.collection('invitation_codes').doc(code).update({
+        lastUsedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        useCount: firebase.firestore.FieldValue.increment(1)
+      });
+
+      window.location.href = 'ordersystem.html';
+
+    } catch (e) {
+      console.error(e);
+      showError('接続エラーが発生しました。しばらくしてから再試行してください。');
+    }
+  }
+</script>
+</body>
+</html>
