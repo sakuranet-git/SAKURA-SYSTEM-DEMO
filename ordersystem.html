@@ -973,21 +973,11 @@
     <!-- Firebase SDK (V8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- DEMO設定（gitignore済み・サーバーに別途アップロード） -->
+    <script src="firebase-config.demo.js"></script>
     <script>
-        // ⚠️ DEMO環境専用 — 本番(sakura-net-db)への接続を絶対禁止
-        const firebaseConfig = {
-            apiKey: "AIzaSyDv26kaVwKjxMSmVeyoc4MdYodgBywNXDc",
-            authDomain: "sakura-demo-2026.firebaseapp.com",
-            projectId: "sakura-demo-2026",
-            storageBucket: "sakura-demo-2026.firebasestorage.app",
-            messagingSenderId: "1087579014177",
-            appId: "1:1087579014177:web:cf9a3b9da8fae0e67b8f60"
-        };
-        if (firebaseConfig.projectId !== 'sakura-demo-2026') {
-            document.body.innerHTML = '<h1 style="color:red;padding:40px">⛔ 設定エラー：デモプロジェクト以外への接続を検出。起動を停止しました。</h1>';
-            throw new Error('FATAL: Wrong Firebase project: ' + firebaseConfig.projectId);
-        }
-        firebase.initializeApp(firebaseConfig);
+        // ⚠️ DEMO環境専用 — 設定は firebase-config.demo.js から読み込む（gitignore済み）
+        firebase.initializeApp(DEMO_FIREBASE_CONFIG);
         const db = firebase.firestore();
         if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
             db.useEmulator('127.0.0.1', 8080);

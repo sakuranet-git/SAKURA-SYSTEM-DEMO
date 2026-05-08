@@ -1,18 +1,10 @@
 /**
- * config.js — SAKURA デモ環境 Firebase設定
- * ⚠️ DEMO専用。本番(sakura-net-db)とは完全に分離されています。
+ * config.js — SAKURA デモ環境 Firebase設定ブリッジ
+ * 実際の設定は firebase-config.demo.js から読み込む（gitignore済み）
+ * ⚠️ このファイルに API キーを直接書かないこと
  */
-const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyDv26kaVwKjxMSmVeyoc4MdYodgBywNXDc",
-    authDomain: "sakura-demo-2026.firebaseapp.com",
-    projectId: "sakura-demo-2026",
-    storageBucket: "sakura-demo-2026.firebasestorage.app",
-    messagingSenderId: "1087579014177",
-    appId: "1:1087579014177:web:cf9a3b9da8fae0e67b8f60"
-};
-
-// 起動時安全チェック
-if (typeof window !== 'undefined' && FIREBASE_CONFIG.projectId !== 'sakura-demo-2026') {
-    document.body.innerHTML = '<h1 style="color:red;padding:40px">⛔ 設定エラー：デモプロジェクト以外への接続を検出。起動を停止しました。</h1>';
-    throw new Error('FATAL: Wrong Firebase project: ' + FIREBASE_CONFIG.projectId);
+if (typeof DEMO_FIREBASE_CONFIG === 'undefined') {
+    document.body.innerHTML = '<h1 style="color:red;padding:40px">⛔ firebase-config.demo.js が読み込まれていません。サーバーへのアップロードを確認してください。</h1>';
+    throw new Error('FATAL: firebase-config.demo.js not loaded');
 }
+const FIREBASE_CONFIG = DEMO_FIREBASE_CONFIG;
