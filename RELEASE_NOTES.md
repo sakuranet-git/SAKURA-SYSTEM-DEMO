@@ -1,5 +1,13 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.1.3 (2026-05-08) — 全ページ匿名認証対応
+
+### 修正
+- `ordersystem.html` に Firebase Auth SDK + 匿名認証追加（顧客データ読み込み対応）
+- `invoice.html` に Firebase Auth SDK + 匿名認証追加（請求書データ読み込み対応）
+
+---
+
 ## v0.1.2 (2026-05-08) — ログイン認証エラー修正
 
 ### 修正

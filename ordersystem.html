@@ -972,6 +972,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Firebase SDK (V8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <!-- DEMO設定（gitignore済み・サーバーに別途アップロード） -->
     <script src="firebase-config.demo.js"></script>
@@ -989,6 +990,7 @@
         if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
             db.useEmulator('127.0.0.1', 8080);
         }
+        firebase.auth().signInAnonymously().catch(() => {});
         // G-2: 緊急停止チェック
         db.collection('demo_config').doc('emergency_stop').get().then(snap => {
             if (snap.exists && snap.data().enabled) {
