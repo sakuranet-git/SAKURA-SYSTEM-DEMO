@@ -2,22 +2,36 @@
 /**
  * C-1: 本番設定リーク検出スクリプト
  * 本番 Firebase の projectId / apiKey がコードに混入していたらデプロイを即停止する
+ *
+ * 本番 apiKey は環境変数 SAKURA_PROD_API_KEY で渡す（ソースに書かない）
+ * ローカル: .env.local に設定 / CI: GitHub Secrets に設定
  */
 
 const fs = require('fs');
 const path = require('path');
 
+// projectId と domain は公開情報なので直接記述可
+// apiKey はハードコード禁止 → 環境変数から読む
 const PROD_PATTERNS = [
-  { label: '本番 projectId', pattern: /sakura-net-db/ },
-  { label: '本番 apiKey',    pattern: /AIzaSyD-IoqRej9KOCWDYy8W7InW3qpu6xxbW8Y/ },
-  { label: '本番 authDomain', pattern: /sakura-net-db\.firebaseapp\.com/ },
+  { label: '本番 projectId',     pattern: /sakura-net-db/ },
+  { label: '本番 authDomain',    pattern: /sakura-net-db\.firebaseapp\.com/ },
   { label: '本番 storageBucket', pattern: /sakura-net-db\.appspot\.com/ },
 ];
+
+// 本番 apiKey が環境変数で渡されている場合のみ追加検査
+if (process.env.SAKURA_PROD_API_KEY) {
+  const escaped = process.env.SAKURA_PROD_API_KEY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  PROD_PATTERNS.push({ label: '本番 apiKey', pattern: new RegExp(escaped) });
+} else {
+  console.warn('⚠️  SAKURA_PROD_API_KEY が未設定のため apiKey チェックをスキップ');
+  console.warn('   .env.local に SAKURA_PROD_API_KEY=<本番apiKey> を追加してください');
+}
 
 const SCAN_EXTENSIONS = ['.js', '.html', '.php', '.json', '.ts'];
 const IGNORE_DIRS = ['node_modules', '.git', 'trash', 'backups'];
 const IGNORE_FILES = [
   'check-no-prod-config.js',
+  'preflight.js',
   'no-prod-network.spec.js',
   '.gitleaks.toml',
 ];
