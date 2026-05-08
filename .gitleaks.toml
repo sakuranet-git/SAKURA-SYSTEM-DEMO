@@ -1,0 +1,27 @@
+# C-2: gitleaks 設定
+# CI でシークレット混入を検出する
+
+title = "SAKURA-SYSTEM-DEMO gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "firebase-prod-project-id"
+description = "本番 Firebase projectId の混入"
+regex = '''sakura-net-db'''
+tags = ["firebase", "production"]
+
+[[rules]]
+id = "firebase-prod-api-key"
+description = "本番 Firebase apiKey の混入"
+regex = '''AIzaSyD-IoqRej9KOCWDYy8W7InW3qpu6xxbW8Y'''
+tags = ["firebase", "production", "api-key"]
+
+[allowlist]
+description = "許可リスト"
+paths = [
+  '''.gitleaks\.toml''',
+  '''scripts/check-no-prod-config\.js''',
+  '''trash/''',
+]
