@@ -1,5 +1,12 @@
 firebase-config.demo.js
 *.env
+.env.local
+.env.*.local
 *.secret
 node_modules/
 trash/
+emulator-data/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

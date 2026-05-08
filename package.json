@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "preflight": "node scripts/check-no-prod-config.js",
+    "preflight": "node scripts/check-no-prod-config.js && node scripts/preflight.js",
     "check:pii": "node scripts/detect-pii.js",
     "test:rules": "jest tests/firebase-rules.test.js",
     "test:network": "playwright test tests/no-prod-network.spec.js",
-    "test:all": "npm run preflight && npm run check:pii && npm run test:rules && npm run test:network",
+    "test:all": "node scripts/check-no-prod-config.js && npm run check:pii && npm run test:rules && npm run test:network",
     "emulator": "firebase emulators:start --only firestore,auth",
+    "emulator:export": "firebase emulators:export emulator-data --force",
+    "start:local": "npm run preflight && firebase serve --only hosting",
     "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml"
   },
   "devDependencies": {
