@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAKURA SYSTEM デモ環境 — 管理者マニュアル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #0075de;
+    --primary-hover: #005bab;
+    --primary-light: #f2f9ff;
+    --text: rgba(0,0,0,0.95);
+    --text-secondary: #615d59;
+    --text-muted: #a39e98;
+    --bg: #f6f5f4;
+    --card-bg: #fff;
+    --border: rgba(0,0,0,0.1);
+    --warning: #dd5b00;
+    --warning-bg: #fff5f0;
+    --success: #1aae39;
+    --success-bg: #f0faf3;
+    --error: #d32f2f;
+    --error-bg: #fef0f0;
+    --code-bg: #f6f5f4;
+    --shadow: rgba(0,0,0,0.04) 0px 4px 18px, rgba(0,0,0,0.027) 0px 2px 7px, rgba(0,0,0,0.02) 0px 0.8px 2.9px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, system-ui, 'Hiragino Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0075de 0%, #005bab 100%);
+    color: #fff;
+    padding: 60px 24px 80px;
+    text-align: center;
+  }
+
+  .header .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 9999px;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+
+  .header .subtitle {
+    font-size: 16px;
+    opacity: 0.9;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: -40px auto 60px;
+    padding: 0 24px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .toc {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 24px 28px;
+    margin-bottom: 40px;
+  }
+
+  .toc h2 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: toc;
+  }
+
+  .toc ol li {
+    counter-increment: toc;
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.06);
+  }
+
+  .toc ol li:last-child { border-bottom: none; }
+
+  .toc ol li::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 12px;
+    margin-right: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .toc ol li a {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .toc ol li a:hover { color: var(--primary); }
+
+  .section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 36px 40px;
+    margin-bottom: 24px;
+    scroll-margin-top: 20px;
+  }
+
+  .section h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section .section-num {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .section .section-desc {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 24px;
+    margin-top: 4px;
+  }
+
+  .section h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 24px 0 12px;
+    color: var(--text);
+  }
+
+  .section p {
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+
+  .section ul, .section ol {
+    margin: 12px 0 16px 0;
+    padding-left: 0;
+  }
+
+  .section ul li, .section ol li {
+    margin-bottom: 8px;
+    list-style-position: inside;
+  }
+
+  .step-list {
+    list-style: none !important;
+    padding: 0;
+    counter-reset: step;
+  }
+
+  .step-list li {
+    counter-increment: step;
+    padding: 16px 16px 16px 56px;
+    background: var(--bg);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    position: relative;
+    list-style: none !important;
+  }
+
+  .step-list li::before {
+    content: counter(step);
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  code {
+    font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--primary);
+    border: 1px solid var(--border);
+  }
+
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 16px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    color: inherit;
+    font-size: 13px;
+  }
+
+  .callout {
+    border-left: 4px solid;
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+
+  .callout.warn {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+    color: var(--warning);
+  }
+
+  .callout.info {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .callout.success {
+    background: var(--success-bg);
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  .callout.error {
+    background: var(--error-bg);
+    border-color: var(--error);
+    color: var(--error);
+  }
+
+  .callout strong { font-weight: 700; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    background: var(--card-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  th {
+    background: var(--bg);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .btn-link {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff !important;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 8px;
+    transition: background 0.15s;
+  }
+
+  .btn-link:hover { background: var(--primary-hover); }
+
+  .footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 720px) {
+    .header { padding: 40px 20px 60px; }
+    .header h1 { font-size: 24px; }
+    .container { padding: 0 16px; margin: -30px auto 40px; }
+    .section { padding: 24px 20px; }
+    .section h2 { font-size: 19px; flex-wrap: wrap; }
+    .toc { padding: 18px 20px; }
+    pre { font-size: 12px; padding: 12px; }
+  }
+
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="badge">ADMIN</span>
+  <h1>🌸 SAKURA SYSTEM デモ環境</h1>
+  <p class="subtitle">管理者マニュアル v1.0</p>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <h2>目次</h2>
+    <ol>
+      <li><a href="#sec1">デモ環境の概要</a></li>
+      <li><a href="#sec2">招待コードの一覧</a></li>
+      <li><a href="#sec3">データのリセット方法</a></li>
+      <li><a href="#sec4">緊急停止の方法</a></li>
+      <li><a href="#sec5">ファイルの更新・アップロード</a></li>
+      <li><a href="#sec6">Firebase Console</a></li>
+      <li><a href="#sec7">トラブルシューティング</a></li>
+      <li><a href="#sec8">困ったときは</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. デモ環境の概要 -->
+  <div class="section" id="sec1">
+    <h2><span class="section-num">01</span>デモ環境の概要</h2>
+    <p class="section-desc">SAKURA SYSTEMのOEM・代理店パートナー候補向けデモ環境です。</p>
+
+    <table>
+      <tr><th>項目</th><th>内容</th></tr>
+      <tr><td>公開URL</td><td><a href="https://demo.sakuranet-co.jp" target="_blank">https://demo.sakuranet-co.jp</a></td></tr>
+      <tr><td>Firebase プロジェクト</td><td><code>sakura-demo-2026</code></td></tr>
+      <tr><td>サーバーパス</td><td><code>/home/sakura-nets/www/demo/</code></td></tr>
+      <tr><td>GitHub</td><td><a href="https://github.com/sakuranet-git/SAKURA-SYSTEM-DEMO" target="_blank">SAKURA-SYSTEM-DEMO</a></td></tr>
+    </table>
+
+    <div class="callout success">
+      <strong>✓ 本番環境と完全分離</strong> — Firebase別プロジェクト・サブドメイン分離・架空データのみ。本番（sakuranet-co.jp）には一切影響しません。
+    </div>
+  </div>
+
+  <!-- 2. 招待コード一覧 -->
+  <div class="section" id="sec2">
+    <h2><span class="section-num">02</span>招待コードの一覧</h2>
+    <p class="section-desc">パートナー候補に渡す招待コードです。利用状況はFirestoreに記録されます。</p>
+
+    <table>
+      <tr><th>招待コード</th><th>用途</th></tr>
+      <tr><td><code>SAKURA-DEMO-2026</code></td><td>一般デモ用</td></tr>
+      <tr><td><code>SAKURA-OEM-001</code></td><td>OEMパートナー候補A社</td></tr>
+      <tr><td><code>SAKURA-AGENT-001</code></td><td>代理店候補B社</td></tr>
+    </table>
+
+    <h3>新しい招待コードを追加したい場合</h3>
+    <p>Firebase Console から手動で追加できます：</p>
+    <ol class="step-list">
+      <li><a href="https://console.firebase.google.com/project/sakura-demo-2026/firestore/data" target="_blank">Firestore Database</a> を開く</li>
+      <li><code>invitation_codes</code> コレクションを選択</li>
+      <li>「ドキュメントを追加」をクリックし、ドキュメントID にコード名を入力</li>
+      <li>フィールドに <code>label</code>(文字列)、<code>disabled</code>(false)、<code>useCount</code>(0)、<code>isDemo</code>(true) を追加</li>
+      <li>保存</li>
+    </ol>
+  </div>
+
+  <!-- 3. データリセット -->
+  <div class="section" id="sec3">
+    <h2><span class="section-num">03</span>データのリセット方法</h2>
+    <p class="section-desc">デモ利用者が入力したデータを初期化し、シードデータを再投入します。</p>
+
+    <ol class="step-list">
+      <li>エクスプローラーで以下のフォルダを開く<br><code>C:\Users\MYPC\Development\CTO\SAKURA-SYSTEM-DEMO\tools</code></li>
+      <li><code>seed-firestore.html</code> をダブルクリックしてブラウザで開く</li>
+      <li>青い「<strong>シードデータを投入する</strong>」ボタンをクリック</li>
+      <li>「✅ 全データの投入が完了しました！」と表示されればOK</li>
+    </ol>
+
+    <div class="callout warn">
+      <strong>⚠️ 注意</strong> — このツールは既存の架空データを上書きします。利用者が作った仮データは消えます（それが目的です）。
+    </div>
+  </div>
+
+  <!-- 4. 緊急停止 -->
+  <div class="section" id="sec4">
+    <h2><span class="section-num">04</span>緊急停止の方法</h2>
+    <p class="section-desc">問題発生時、デモ環境を即座にメンテナンス画面にする操作です。</p>
+
+    <h3>停止する</h3>
+    <ol class="step-list">
+      <li><a href="https://console.firebase.google.com/project/sakura-demo-2026/firestore/data" target="_blank">Firestore Database</a> を開く</li>
+      <li><code>demo_config</code> コレクション → <code>emergency_stop</code> ドキュメントを開く</li>
+      <li><code>enabled</code> フィールドを <code>true</code> に変更</li>
+      <li><code>reason</code> フィールドに表示メッセージを入力（例：「メンテナンス中です。15分後に再アクセスください」）</li>
+      <li>保存</li>
+    </ol>
+
+    <h3>解除する</h3>
+    <p>同じドキュメントの <code>enabled</code> を <code>false</code> に戻すだけです。</p>
+
+    <div class="callout info">
+      <strong>💡 補足</strong> — 緊急停止が有効になると、デモサイトを開いた人には「⛔ デモ環境停止中」とメッセージが表示されます。
+    </div>
+  </div>
+
+  <!-- 5. ファイル更新 -->
+  <div class="section" id="sec5">
+    <h2><span class="section-num">05</span>ファイルの更新・アップロード</h2>
+    <p class="section-desc">デモ環境のHTMLファイルを更新したときのアップロード手順です。</p>
+
+    <h3>アップロード対象ファイル</h3>
+    <table>
+      <tr><th>ファイル名</th><th>役割</th></tr>
+      <tr><td><code>index.html</code></td><td>招待コード入力ページ</td></tr>
+      <tr><td><code>ordersystem.html</code></td><td>顧客管理システム</td></tr>
+      <tr><td><code>invoice.html</code></td><td>請求書システム</td></tr>
+      <tr><td><code>config.js</code></td><td>設定ブリッジ</td></tr>
+      <tr><td><code>firebase-config.demo.js</code></td><td>Firebase設定（gitignore済み・初回のみ手動UP必要）</td></tr>
+    </table>
+
+    <h3>アップロード手順（WinSCP）</h3>
+    <ol class="step-list">
+      <li>WinSCP を起動し、さくらインターネットサーバーに接続</li>
+      <li>サーバー側のフォルダ <code>/home/sakura-nets/www/demo/</code> を開く</li>
+      <li>ローカル側 <code>C:\Users\MYPC\Development\CTO\SAKURA-SYSTEM-DEMO\</code> を開く</li>
+      <li>更新したいファイルをドラッグ&ドロップでアップロード</li>
+      <li>ブラウザで <a href="https://demo.sakuranet-co.jp" target="_blank">demo.sakuranet-co.jp</a> を更新（Ctrl+F5）して反映確認</li>
+    </ol>
+
+    <div class="callout warn">
+      <strong>⚠️ 重要</strong> — <code>firebase-config.demo.js</code> はGitHubには含まれていません（APIキーを守るため）。サーバーで紛失しないようローカル側で必ず保管してください。
+    </div>
+  </div>
+
+  <!-- 6. Firebase Console -->
+  <div class="section" id="sec6">
+    <h2><span class="section-num">06</span>Firebase Console</h2>
+    <p class="section-desc">Firebase（データベース）の管理画面です。</p>
+
+    <table>
+      <tr><th>用途</th><th>URL</th></tr>
+      <tr><td>プロジェクトトップ</td><td><a href="https://console.firebase.google.com/project/sakura-demo-2026" target="_blank">開く</a></td></tr>
+      <tr><td>Firestore データ閲覧</td><td><a href="https://console.firebase.google.com/project/sakura-demo-2026/firestore/data" target="_blank">開く</a></td></tr>
+      <tr><td>Firestore ルール</td><td><a href="https://console.firebase.google.com/project/sakura-demo-2026/firestore/rules" target="_blank">開く</a></td></tr>
+      <tr><td>Authentication</td><td><a href="https://console.firebase.google.com/project/sakura-demo-2026/authentication/users" target="_blank">開く</a></td></tr>
+    </table>
+
+    <h3>データ確認ポイント</h3>
+    <ul>
+      <li><code>customer_records</code> — 顧客データ（架空5件 + 利用者追加分）</li>
+      <li><code>invoices</code> — 請求書データ（架空4件 + 利用者追加分）</li>
+      <li><code>invitation_codes</code> — 招待コード（3件 + useCount/lastUsedAt）</li>
+      <li><code>demo_config/emergency_stop</code> — 緊急停止スイッチ</li>
+    </ul>
+  </div>
+
+  <!-- 7. トラブル -->
+  <div class="section" id="sec7">
+    <h2><span class="section-num">07</span>トラブルシューティング</h2>
+    <p class="section-desc">よくある問題と対処方法です。</p>
+
+    <h3>Q. デモ画面が真っ白になる</h3>
+    <p><strong>A.</strong> ブラウザのスーパーリロード（Ctrl+F5 または Cmd+Shift+R）でキャッシュをクリアしてください。</p>
+
+    <h3>Q. 「接続エラーが発生しました」と出る</h3>
+    <p><strong>A.</strong> 以下を確認：</p>
+    <ul>
+      <li>Firestoreルールが正しいか（<a href="https://console.firebase.google.com/project/sakura-demo-2026/firestore/rules" target="_blank">確認する</a>）</li>
+      <li>Authentication で「匿名」がONになっているか（<a href="https://console.firebase.google.com/project/sakura-demo-2026/authentication/providers" target="_blank">確認する</a>）</li>
+      <li>F12キー → コンソールタブで赤いエラーを確認</li>
+    </ul>
+
+    <h3>Q. 招待コードが「無効です」と出る</h3>
+    <p><strong>A.</strong> Firestore の <code>invitation_codes</code> にそのコードが存在するか、<code>disabled: false</code> になっているか確認。</p>
+
+    <h3>Q. データが増えてきて見にくい</h3>
+    <p><strong>A.</strong> 「03 データのリセット方法」を参照してリセットしてください。</p>
+
+    <h3>Q. PDF出力にDEMO透かしが出ない</h3>
+    <p><strong>A.</strong> ブラウザのキャッシュが古い可能性。Ctrl+F5 でキャッシュクリアしてから再試行。</p>
+  </div>
+
+  <!-- 8. 困ったとき -->
+  <div class="section" id="sec8">
+    <h2><span class="section-num">08</span>困ったときは</h2>
+    <p class="section-desc">お問い合わせ・連絡先</p>
+
+    <ul>
+      <li>📧 メール: <a href="mailto:ai.sakuranet@gmail.com">ai.sakuranet@gmail.com</a></li>
+      <li>💻 GitHub Issues: <a href="https://github.com/sakuranet-git/SAKURA-SYSTEM-DEMO/issues" target="_blank">SAKURA-SYSTEM-DEMO/issues</a></li>
+      <li>📂 ローカル作業フォルダ: <code>C:\Users\MYPC\Development\CTO\SAKURA-SYSTEM-DEMO\</code></li>
+    </ul>
+
+    <div class="callout success">
+      <strong>✓ バックアップ</strong> — すべての変更は GitHub に push 済み。<code>backups/</code> フォルダにもバージョン別バックアップあり。
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  © SAKURA NET — デモ環境管理者マニュアル v1.0 (2026-05-08)
+</div>
+
+</body>
+</html>
