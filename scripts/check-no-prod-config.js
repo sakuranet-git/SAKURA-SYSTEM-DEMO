@@ -10,12 +10,11 @@
 const fs = require('fs');
 const path = require('path');
 
-// projectId と domain は公開情報なので直接記述可
-// apiKey はハードコード禁止 → 環境変数から読む
+// 設定値として代入されている場合のみ検出（コメント内は除外）
 const PROD_PATTERNS = [
-  { label: '本番 projectId',     pattern: /sakura-net-db/ },
-  { label: '本番 authDomain',    pattern: /sakura-net-db\.firebaseapp\.com/ },
-  { label: '本番 storageBucket', pattern: /sakura-net-db\.appspot\.com/ },
+  { label: '本番 projectId',     pattern: /projectId\s*[:=]\s*["']sakura-net-db["']/ },
+  { label: '本番 authDomain',    pattern: /authDomain\s*[:=]\s*["']sakura-net-db\.firebaseapp\.com["']/ },
+  { label: '本番 storageBucket', pattern: /storageBucket\s*[:=]\s*["']sakura-net-db/ },
 ];
 
 // 本番 apiKey が環境変数で渡されている場合のみ追加検査
