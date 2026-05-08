@@ -989,6 +989,14 @@
         if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
             db.useEmulator('127.0.0.1', 8080);
         }
+        // G-2: 緊急停止チェック
+        db.collection('demo_config').doc('emergency_stop').get().then(snap => {
+            if (snap.exists && snap.data().enabled) {
+                const reason = snap.data().reason || 'メンテナンス中です。';
+                document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff5f0;"><div style="text-align:center;padding:40px;"><h1 style="color:#d32f2f;font-size:28px;">⛔ デモ環境停止中</h1><p style="margin-top:16px;color:#615d59;font-size:16px;">${reason}</p></div></div>`;
+            }
+        }).catch(() => {});
+
 
         // Firestoreリアルタイム同期用のオブジェクト
         window.signatureUnsubscribe = null;

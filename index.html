@@ -285,6 +285,23 @@
     window.location.href = 'ordersystem.html';
   }
 
+  // G-2: 緊急停止チェック（Firebase 初期化前に実行）
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+      const db = firebase.firestore();
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        db.useEmulator('127.0.0.1', 8080);
+      }
+      db.collection('demo_config').doc('emergency_stop').get().then(snap => {
+        if (snap.exists && snap.data().enabled) {
+          const reason = snap.data().reason || 'メンテナンス中です。';
+          document.querySelector('.card').innerHTML = `<div style="text-align:center;padding:20px;"><h2 style="color:#d32f2f;">⛔ デモ環境停止中</h2><p style="margin-top:12px;color:#615d59;">${reason}</p></div>`;
+        }
+      }).catch(() => {});
+    } catch(e) {}
+  });
+
   function showError(msg) {
     errorMsg.textContent = msg;
     errorMsg.style.display = 'block';
