@@ -2,55 +2,253 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 認証済み判定
-    function isAuthed() {
-      return request.auth != null;
+    // ─── 共通関数 ───────────────────────────────────────────
+    function sessionPath() {
+      return /databases/$(database)/documents/demo_sessions/$(request.auth.uid);
+    }
+    function sessionData() { return get(sessionPath()).data; }
+
+    function validDemoSession() {
+      return request.auth != null
+          && request.auth.uid != null
+          && request.auth.token.email != null
+          && exists(sessionPath())
+          && sessionData().active == true
+          && sessionData().disabled != true
+          && sessionData().role in ['demo_user', 'demo_admin']
+          && sessionData().expiresAt > request.time
+          && sessionData().email == request.auth.token.email;
+    }
+    function isDemoUser()  { return validDemoSession(); }
+    function isDemoAdmin() { return validDemoSession() && sessionData().role == 'demo_admin'; }
+    function hasIsDemo()   { return request.resource.data.isDemo == true; }
+    function timestampValid(field) {
+      return field is timestamp && field <= request.time;
     }
 
-    // isDemo フラグ付きデータのみ書き込み許可
-    function hasIsDemo() {
-      return request.resource.data.isDemo == true;
-    }
+    // ─── 既存コレクション（互換 Rules）────────────────────────
 
-    // customer_records: 認証済み + isDemoフラグ必須
+    // customer_records（41フィールド allowlist・物理delete 暫定許可）
+    function customerLegacyFieldsValid() {
+      let allowed = [
+        'status','dateReq','dateWork','timeWorkStart','timeWorkEnd','taskType',
+        'name','kana','email','agency','staff','tel1','tel2','zip','address',
+        'plan','cafNumber','accessKey','provider','constDate','pcCount','connStatus',
+        'wanLanIp','routerIp','wifiIp','mailIdPass','serverIp','serverUserPass','copierIp',
+        'innovEraUrl','innovEra','doraCoon',
+        'memo','feeBase','feeTravel','feeParts','amount',
+        'isDemo','created_by','created_by_name','seededAt','id'
+      ];
+      return request.resource.data.keys().hasOnly(allowed);
+    }
     match /customer_records/{docId} {
-      allow read: if isAuthed();
-      allow write: if isAuthed() && hasIsDemo();
+      allow read:   if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo() && customerLegacyFieldsValid();
+      allow update: if isDemoUser() && hasIsDemo() && customerLegacyFieldsValid()
+                     && request.resource.data.isDemo == resource.data.isDemo;
+      // ⚠️ 暫定 Phase 2-A限定 — Phase 2-D で archived 論理削除へ移行・撤廃予定
+      allow delete: if isDemoUser();
     }
 
-    // invoices: 認証済み + isDemoフラグ必須
+    // invoices（22フィールド allowlist・論理削除のみ）
+    function invoiceLegacyFieldsValid() {
+      let allowed = [
+        'invoiceNumber','status','invDate','billingMonth',
+        'clientName','clientContact','clientEmail','clientAddress',
+        'paymentMethod','note','items','subtotal','tax','total',
+        'updatedAt','isDemo','deleted','deletedAt','locked','lockedAt','seededAt','id'
+      ];
+      return request.resource.data.keys().hasOnly(allowed);
+    }
     match /invoices/{docId} {
-      allow read: if isAuthed();
-      allow write: if isAuthed() && hasIsDemo();
+      allow read:          if isDemoUser();
+      allow create:        if isDemoUser() && hasIsDemo() && invoiceLegacyFieldsValid();
+      allow update:        if isDemoUser() && hasIsDemo() && invoiceLegacyFieldsValid();
+      allow delete:        if false;
     }
 
-    // invitation_codes: 誰でも読み可・認証済み+isDemoフラグで書き込み可
-    match /invitation_codes/{codeId} {
-      allow read: if true;
-      allow write: if isAuthed() && hasIsDemo();
+    // audit_log（既存形式）
+    function auditLegacyFieldsValid() {
+      let allowed = ['invoiceId','invoiceNumber','action','clientName','total','timestamp','isDemo'];
+      return request.resource.data.keys().hasOnly(allowed);
     }
-
-    // audit_log / mail_log / demo_reset_log: 認証済み+isDemoフラグ
     match /audit_log/{docId} {
-      allow read: if isAuthed();
-      allow write: if isAuthed() && hasIsDemo();
-    }
-    match /mail_log/{docId} {
-      allow read: if isAuthed();
-      allow write: if isAuthed() && hasIsDemo();
-    }
-    match /demo_reset_log/{docId} {
-      allow read: if isAuthed();
-      allow write: if isAuthed();
+      allow read:          if isDemoUser();
+      allow create:        if isDemoUser() && hasIsDemo() && auditLegacyFieldsValid();
+      allow update, delete: if false;
     }
 
-    // demo_config: 誰でも読み可（緊急停止チェック用）
+    // invitation_codes（v0.1.8で廃止）
+    match /invitation_codes/{codeId} {
+      allow read, write: if false;
+    }
+
+    // ─── セッション / 設定 ───────────────────────────────────
+
+    match /demo_sessions/{uid} {
+      allow get:                       if request.auth != null && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
     match /demo_config/{docId} {
-      allow read: if true;
+      allow read:  if true;
       allow write: if false;
     }
 
-    // 上記以外は全拒否
+    // ─── 新規 demo_* コレクション（v12 厳格仕様）────────────
+
+    // demo_todos
+    function demoTodoFieldsValid() {
+      let allowed = ['title','done','priority','dueDate','memo','isDemo',
+                     'createdAt','updatedAt','createdBy','updatedBy',
+                     'archived','archivedAt','archivedBy'];
+      return request.resource.data.keys().hasOnly(allowed)
+          && request.resource.data.title is string
+          && request.resource.data.title.size() <= 200
+          && (!('memo' in request.resource.data) || request.resource.data.memo.size() <= 3000);
+    }
+    function demoTodoUpdateInvariants() {
+      return request.resource.data.isDemo    == resource.data.isDemo
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          && timestampValid(request.resource.data.updatedAt);
+    }
+    function demoTodoArchiveOneWay() {
+      return resource.data.archived == false
+          && request.resource.data.archived == true
+          && request.resource.data.archivedBy == request.auth.uid
+          && timestampValid(request.resource.data.archivedAt);
+    }
+    match /demo_todos/{docId} {
+      allow read: if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo() && demoTodoFieldsValid()
+                     && request.resource.data.createdBy == request.auth.uid
+                     && request.resource.data.archived == false
+                     && !('updatedAt'   in request.resource.data)
+                     && !('updatedBy'   in request.resource.data)
+                     && !('archivedAt'  in request.resource.data)
+                     && !('archivedBy'  in request.resource.data)
+                     && timestampValid(request.resource.data.createdAt);
+      allow update: if isDemoUser() && hasIsDemo() && demoTodoFieldsValid() && demoTodoUpdateInvariants()
+                     && resource.data.archived == false
+                     && request.resource.data.archived == false
+                     && !('archivedAt' in request.resource.data)
+                     && !('archivedBy' in request.resource.data);
+      allow update: if isDemoUser() && hasIsDemo() && demoTodoFieldsValid() && demoTodoUpdateInvariants()
+                     && demoTodoArchiveOneWay()
+                     && resource.data.createdBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // demo_board_posts
+    function demoBoardFieldsValid() {
+      let allowed = ['title','body','category','isDemo',
+                     'createdAt','updatedAt','createdBy','updatedBy',
+                     'archived','archivedAt','archivedBy'];
+      return request.resource.data.keys().hasOnly(allowed)
+          && request.resource.data.title is string
+          && request.resource.data.title.size() <= 200
+          && request.resource.data.body is string
+          && request.resource.data.body.size() <= 3000;
+    }
+    function demoBoardUpdateInvariants() {
+      return request.resource.data.isDemo    == resource.data.isDemo
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          && timestampValid(request.resource.data.updatedAt);
+    }
+    function demoBoardArchiveOneWay() {
+      return resource.data.archived == false
+          && request.resource.data.archived == true
+          && request.resource.data.archivedBy == request.auth.uid
+          && timestampValid(request.resource.data.archivedAt);
+    }
+    match /demo_board_posts/{docId} {
+      allow read: if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo() && demoBoardFieldsValid()
+                     && request.resource.data.createdBy == request.auth.uid
+                     && request.resource.data.archived == false
+                     && !('updatedAt'  in request.resource.data)
+                     && !('updatedBy'  in request.resource.data)
+                     && !('archivedAt' in request.resource.data)
+                     && !('archivedBy' in request.resource.data)
+                     && timestampValid(request.resource.data.createdAt);
+      allow update: if isDemoUser() && hasIsDemo() && demoBoardFieldsValid() && demoBoardUpdateInvariants()
+                     && resource.data.archived == false
+                     && request.resource.data.archived == false
+                     && !('archivedAt' in request.resource.data)
+                     && !('archivedBy' in request.resource.data);
+      allow update: if isDemoUser() && hasIsDemo() && demoBoardFieldsValid() && demoBoardUpdateInvariants()
+                     && demoBoardArchiveOneWay()
+                     && resource.data.createdBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // demo_calendar_events
+    function demoCalendarFieldsValid() {
+      let allowed = ['title','startAt','endAt','allDay','memo','isDemo',
+                     'createdAt','updatedAt','createdBy','updatedBy',
+                     'archived','archivedAt','archivedBy'];
+      return request.resource.data.keys().hasOnly(allowed)
+          && request.resource.data.title is string
+          && request.resource.data.title.size() <= 200
+          && (!('memo' in request.resource.data) || request.resource.data.memo.size() <= 3000)
+          && request.resource.data.startAt is timestamp
+          && request.resource.data.endAt is timestamp;
+    }
+    function demoCalendarUpdateInvariants() {
+      return request.resource.data.isDemo    == resource.data.isDemo
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          && timestampValid(request.resource.data.updatedAt);
+    }
+    function demoCalendarArchiveOneWay() {
+      return resource.data.archived == false
+          && request.resource.data.archived == true
+          && request.resource.data.archivedBy == request.auth.uid
+          && timestampValid(request.resource.data.archivedAt);
+    }
+    match /demo_calendar_events/{docId} {
+      allow read: if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo() && demoCalendarFieldsValid()
+                     && request.resource.data.createdBy == request.auth.uid
+                     && request.resource.data.archived == false
+                     && !('updatedAt'  in request.resource.data)
+                     && !('updatedBy'  in request.resource.data)
+                     && !('archivedAt' in request.resource.data)
+                     && !('archivedBy' in request.resource.data)
+                     && timestampValid(request.resource.data.createdAt);
+      allow update: if isDemoUser() && hasIsDemo() && demoCalendarFieldsValid() && demoCalendarUpdateInvariants()
+                     && resource.data.archived == false
+                     && request.resource.data.archived == false
+                     && !('archivedAt' in request.resource.data)
+                     && !('archivedBy' in request.resource.data);
+      allow update: if isDemoUser() && hasIsDemo() && demoCalendarFieldsValid() && demoCalendarUpdateInvariants()
+                     && demoCalendarArchiveOneWay()
+                     && resource.data.createdBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // demo_audit_log
+    function demoAuditFieldsValid() {
+      let allowed = ['actorUid','action','collection','docId','isDemo','createdAt'];
+      return request.resource.data.keys().hasOnly(allowed)
+          && request.resource.data.actorUid    == request.auth.uid
+          && request.resource.data.isDemo      == true
+          && request.resource.data.action      in ['create','update','archive']
+          && request.resource.data.collection  in ['demo_todos','demo_board_posts','demo_calendar_events']
+          && timestampValid(request.resource.data.createdAt);
+    }
+    match /demo_audit_log/{docId} {
+      allow read:          if isDemoUser();
+      allow create:        if isDemoUser() && hasIsDemo() && demoAuditFieldsValid();
+      allow update, delete: if false;
+    }
+
+    // ─── 全拒否（フォールバック）─────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

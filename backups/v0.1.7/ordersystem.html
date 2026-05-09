@@ -980,24 +980,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
     <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
     <script>
+        // セッション認証チェック（招待コード未入力の場合はトップへ）
+        if (sessionStorage.getItem('demo_authorized') !== 'true') {
+            window.location.href = 'index.html';
+        }
         // ⚠️ DEMO環境専用 — 設定は firebase-config.demo.js から読み込む（gitignore済み）
         firebase.initializeApp(DEMO_FIREBASE_CONFIG);
         const db = firebase.firestore();
         if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
             db.useEmulator('127.0.0.1', 8080);
         }
-        // v0.1.8: Email/Password + demo_sessions 認証チェック
-        firebase.auth().onAuthStateChanged(async function(user) {
-            if (!user) { window.location.href = 'index.html'; return; }
-            try {
-                const snap = await db.collection('demo_sessions').doc(user.uid).get();
-                const d = snap.data();
-                if (!snap.exists || !d.active || d.disabled || d.expiresAt.toDate() < new Date()) {
-                    await firebase.auth().signOut();
-                    window.location.href = 'index.html';
-                }
-            } catch(e) { window.location.href = 'index.html'; }
-        });
+        firebase.auth().signInAnonymously().catch(() => {});
         // G-2: 緊急停止チェック
         db.collection('demo_config').doc('emergency_stop').get().then(snap => {
             if (snap.exists && snap.data().enabled) {
@@ -1020,7 +1013,7 @@
   <a href="ordersystem.html" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#0075de;color:#fff;">👥 顧客管理</a>
   <a href="invoice.html" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">📄 請求書</a>
   <a href="manual-user.html" target="_blank" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">📖 使い方ガイド</a>
-  <a href="javascript:void(0)" onclick="if(confirm('ログアウトしますか？')){firebase.auth().signOut().then(()=>{location.href='index.html';}).catch(()=>{location.href='index.html';});}" style="display:inline-block;padding:6px 14px;margin:0 4px 0 16px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#fff5f0;color:#dd5b00;border:1px solid rgba(221,91,0,0.2);">🚪 ログアウト</a>
+  <a href="javascript:void(0)" onclick="if(confirm('ログアウトしますか？')){sessionStorage.clear();try{firebase.auth().signOut();}catch(e){}location.href='index.html';}" style="display:inline-block;padding:6px 14px;margin:0 4px 0 16px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#fff5f0;color:#dd5b00;border:1px solid rgba(221,91,0,0.2);">🚪 ログアウト</a>
 </nav>
 <div style="height:68px;"></div>
 

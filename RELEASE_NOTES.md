@@ -1,5 +1,33 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.1.8 (2026-05-09) — 認証移行（Email/Password + demo_sessions）
+
+### 変更（Phase 2-A §13.1 実装）
+
+**認証モデル変更**
+- 匿名認証（Anonymous Auth）→ Email/Password 認証に移行
+- `demo_sessions` コレクションによるセッション検証（active / disabled / expiresAt チェック）
+- 招待コード（invitation_codes）廃止
+
+**変更ファイル**
+- `index.html` — 招待コード入力フォーム → Email/Password ログインフォームに置換
+- `ordersystem.html` — 認証コードのみ変更（業務ロジック・データモデル変更なし）
+- `invoice.html` — 認証コードのみ変更（業務ロジック・データモデル変更なし）
+- `tools/seed-firestore.html` — 管理者 Email/Password 入力欄追加・招待コード投入削除
+- `firestore.rules` — v12 仕様に更新（validDemoSession / フィールド allowlist / demo_* Rules）
+
+**Firebase Console 必須作業**（ユーザー手動）
+- Authentication > Email/Password プロバイダ ON
+- Authentication > 匿名 プロバイダ OFF
+- Firestore > `demo_sessions` コレクション・3アカウント分ドキュメント作成
+- Firestore > Rules を本バージョンの内容で更新・公開
+- Firestore > `invitation_codes` コレクション削除
+
+**バックアップ**
+- `backups/v0.1.7/` に v0.1.7 時点のファイルを保存済み
+
+---
+
 ## Phase 2-A プラン v12 (2026-05-09) — 🟢 Codex 最終承認版
 
 ### 最終承認

@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 認証済み判定
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    // isDemo フラグ付きデータのみ書き込み許可
+    function hasIsDemo() {
+      return request.resource.data.isDemo == true;
+    }
+
+    // customer_records: 認証済み + isDemoフラグ必須
+    match /customer_records/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
+    }
+
+    // invoices: 認証済み + isDemoフラグ必須
+    match /invoices/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
+    }
+
+    // invitation_codes: 誰でも読み可・認証済み+isDemoフラグで書き込み可
+    match /invitation_codes/{codeId} {
+      allow read: if true;
+      allow write: if isAuthed() && hasIsDemo();
+    }
+
+    // audit_log / mail_log / demo_reset_log: 認証済み+isDemoフラグ
+    match /audit_log/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
+    }
+    match /mail_log/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && hasIsDemo();
+    }
+    match /demo_reset_log/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed();
+    }
+
+    // demo_config: 誰でも読み可（緊急停止チェック用）
+    match /demo_config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 上記以外は全拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

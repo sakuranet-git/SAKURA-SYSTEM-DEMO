@@ -18,18 +18,10 @@
 </head>
 <body>
 <h2>🌸 Firestore シードデータ投入</h2>
-<p style="color:#615d59;margin:12px 0;">デモ用の顧客データ・請求書データを Firebase に投入します。<br>
-<strong>管理者アカウントでログインして実行してください。</strong></p>
-<div style="margin-bottom:12px;">
-  <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">管理者メールアドレス</label>
-  <input type="email" id="adminEmail" placeholder="admin@example.com" style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;box-sizing:border-box;">
-</div>
-<div style="margin-bottom:16px;">
-  <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">パスワード</label>
-  <input type="password" id="adminPassword" placeholder="パスワード" style="width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;box-sizing:border-box;">
-</div>
+<p style="color:#615d59;margin:12px 0;">デモ用の招待コード・顧客データ・請求書データを Firebase に投入します。<br>
+<strong>初回セットアップ時に一度だけ実行してください。</strong></p>
 <button id="seedBtn" onclick="runSeed()">シードデータを投入する</button>
-<div id="log">管理者メールアドレスとパスワードを入力して実行してください...</div>
+<div id="log">実行ボタンを押してください...</div>
 
 <script>
 const log = document.getElementById('log');
@@ -42,7 +34,11 @@ function addLog(msg, type) {
   log.appendChild(span);
 }
 
-// v0.1.8: invitation_codes は廃止（Email/Password 認証に移行済み）
+const invitationCodes = [
+  { id: 'SAKURA-DEMO-2026', label: '一般デモ用', disabled: false, expiresAt: null, useCount: 0, isDemo: true },
+  { id: 'SAKURA-OEM-001',   label: 'OEMパートナー候補A社', disabled: false, expiresAt: null, useCount: 0, isDemo: true },
+  { id: 'SAKURA-AGENT-001', label: '代理店候補B社', disabled: false, expiresAt: null, useCount: 0, isDemo: true }
+];
 
 const customers = [
   { id:'demo-001', status:'完了', dateReq:'2026-01-10', dateWork:'2026-01-20', timeWorkStart:'10:00', timeWorkEnd:'12:00', taskType:'光回線開通', name:'架空商事株式会社', kana:'カクウショウジカブシキガイシャ', email:'info-kakuu@example.com', agency:'デモ代理店A', staff:'田中デモ', tel1:'000-0000-0001', tel2:'', zip:'000-0001', address:'デモ県デモ市架空町1-2-3', plan:'SAKURA-NET光 10G', cafNumber:'DEMO-CAF-001', accessKey:'DEMO-KEY-001', provider:'さくらデモプロバイダ', constDate:'2026-01-20', pcCount:'5', connStatus:'開通済み', wanLanIp:'192.168.0.1', routerIp:'192.168.0.254', wifiIp:'192.168.0.253', mailIdPass:'demo@example.com / demopass', serverIp:'', serverUserPass:'', copierIp:'192.168.0.100', memo:'デモ用サンプルデータです', feeBase:'50000', feeTravel:'5000', feeParts:'0', amount:'55000', isDemo:true },
@@ -60,10 +56,6 @@ const invoices = [
 ];
 
 async function runSeed() {
-  const email = document.getElementById('adminEmail').value.trim();
-  const pass  = document.getElementById('adminPassword').value;
-  if (!email || !pass) { alert('メールアドレスとパスワードを入力してください。'); return; }
-
   btn.disabled = true;
   log.textContent = '';
   addLog('シードデータ投入を開始します...');
@@ -73,14 +65,16 @@ async function runSeed() {
     const db = firebase.firestore();
     addLog(`✓ Firebase 接続: ${DEMO_FIREBASE_CONFIG.projectId}`, 'ok');
 
-    // Email/Password 認証（demo_sessions 検証）
-    const cred = await firebase.auth().signInWithEmailAndPassword(email, pass);
-    const snap = await db.collection('demo_sessions').doc(cred.user.uid).get();
-    const d = snap.data();
-    if (!snap.exists || !d.active || d.disabled || d.expiresAt.toDate() < new Date()) {
-      throw new Error('有効なデモセッションがありません。管理者アカウントを確認してください。');
+    // 匿名認証（Firestore Rules: isAuthed() が必要）
+    await firebase.auth().signInAnonymously();
+    addLog('✓ 匿名認証 完了', 'ok');
+
+    // 招待コード
+    addLog('\n--- 招待コード ---');
+    for (const code of invitationCodes) {
+      await db.collection('invitation_codes').doc(code.id).set(code);
+      addLog(`✓ ${code.id} (${code.label})`, 'ok');
     }
-    addLog('✓ 管理者認証 完了', 'ok');
 
     // 顧客データ
     addLog('\n--- 顧客データ ---');

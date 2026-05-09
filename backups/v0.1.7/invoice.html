@@ -885,7 +885,7 @@
   <a href="ordersystem.html" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">👥 顧客管理</a>
   <a href="invoice.html" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#0075de;color:#fff;">📄 請求書</a>
   <a href="manual-user.html" target="_blank" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">📖 使い方ガイド</a>
-  <a href="javascript:void(0)" onclick="if(confirm('ログアウトしますか？')){firebase.auth().signOut().then(()=>{location.href='index.html';}).catch(()=>{location.href='index.html';});}" style="display:inline-block;padding:6px 14px;margin:0 4px 0 16px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#fff5f0;color:#dd5b00;border:1px solid rgba(221,91,0,0.2);">🚪 ログアウト</a>
+  <a href="javascript:void(0)" onclick="if(confirm('ログアウトしますか？')){sessionStorage.clear();try{firebase.auth().signOut();}catch(e){}location.href='index.html';}" style="display:inline-block;padding:6px 14px;margin:0 4px 0 16px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#fff5f0;color:#dd5b00;border:1px solid rgba(221,91,0,0.2);">🚪 ログアウト</a>
 </nav>
 <div style="height:68px;"></div>
 
@@ -1333,18 +1333,11 @@
                 db.useEmulator('127.0.0.1', 8080);
             }
             setSyncBadge(true);
-            // v0.1.8: Email/Password + demo_sessions 認証チェック後にFirestore購読
-            firebase.auth().onAuthStateChanged(async function(user) {
-                if (!user) { window.location.href = 'index.html'; return; }
-                try {
-                    const snap = await db.collection('demo_sessions').doc(user.uid).get();
-                    const d = snap.data();
-                    if (!snap.exists || !d.active || d.disabled || d.expiresAt.toDate() < new Date()) {
-                        await firebase.auth().signOut();
-                        window.location.href = 'index.html';
-                        return;
-                    }
-                } catch(e) { window.location.href = 'index.html'; return; }
+            // 匿名認証後にFirestore購読（isAuthed()ルール対応）
+            firebase.auth().signInAnonymously().then(() => {
+                subscribeInvoices();
+                loadCustomerCache();
+            }).catch(() => {
                 subscribeInvoices();
                 loadCustomerCache();
             });
