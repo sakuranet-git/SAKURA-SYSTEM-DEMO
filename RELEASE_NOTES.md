@@ -1,5 +1,17 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## Phase 2-A プラン納品 (2026-05-09) — Opus 担当
+
+### 追加
+- `PHASE_2A_GROUPWARE_PLAN_v10.md` — グループウェア追加プラン最終版
+- Codex 8回レビュー反映済み・2層分離戦略
+- 既存 ordersystem/invoice 非破壊・新規 demo_* 厳格仕様
+- Email/Password 認証 + demo_sessions ベース validDemoSession
+- 実装フェーズ: v0.1.8（認証移行）→ v0.2.0（グループウェア）→ Phase 2-D（後続・既存改修）
+- 役割分担: プラン = Opus / 実装 = Sonnet
+
+---
+
 ## v0.1.7 (2026-05-08) — トップページに使い方ガイド導線追加
 
 ### 追加
