@@ -1,5 +1,26 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## Phase 2-A プラン v12 (2026-05-09) — 🟢 Codex 最終承認版
+
+### 最終承認
+- `PHASE_2A_GROUPWARE_PLAN_v12.md` 追加（実装着手承認版）
+- Codex 第10回最終レビュー「微修正で承認」を全反映：
+  - demo_* create 時 updatedAt/updatedBy/archivedAt/archivedBy 混入禁止
+  - Phase 2-D 必須タスク 6件をチケット化（§19 新設）
+- Rules Unit Test に T39-T40 追加
+- **Codex 10回レビュー完了**
+
+### Codex 最終判定
+```
+2層分離方針: 承認
+Email/Password + demo_sessions: 承認
+demo_* collection 方針: 承認
+既存業務ロジック非破壊: 承認
+Sonnet 実装着手: 🟢 OK
+```
+
+---
+
 ## Phase 2-A プラン v11 (2026-05-09) — Codex 第9回指摘修正
 
 ### 修正
