@@ -1,5 +1,19 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## Phase 2-A プラン v11 (2026-05-09) — Codex 第9回指摘修正
+
+### 修正
+- `PHASE_2A_GROUPWARE_PLAN_v11.md` 追加
+- Codex 第9回レビューの5指摘を反映：
+  - Q6 と §13.1 の矛盾解消（業務ロジックは触らない・認証コードのみ変更）
+  - customer_records delete ALLOW のリスク・期限・緊急対応明記
+  - demo_* 通常 update で archived 済みデータ編集禁止
+  - create 時 archivedAt/archivedBy 混入禁止
+  - 通常 update で archivedAt/archivedBy 改変禁止
+- Rules Unit Test に archived ガードテスト 8件追加（T31-T38）
+
+---
+
 ## Phase 2-A プラン納品 (2026-05-09) — Opus 担当
 
 ### 追加
