@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>demo_sessions セットアップツール</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="../firebase-config.demo.js"></script>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+  input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 10px; }
+  button { background: #0075de; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  #log { margin-top: 20px; background: #f6f5f4; border-radius: 6px; padding: 16px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; min-height: 80px; }
+  .ok  { color: #1aae39; }
+  .err { color: #d32f2f; }
+  .warn { color: #e65100; }
+</style>
+</head>
+<body>
+<h2>🌸 demo_sessions セットアップツール</h2>
+<p style="color:#615d59;font-size:13px;">管理者アカウントでログインすると、3件の demo_sessions ドキュメントを自動作成します。</p>
+
+<label style="font-size:13px;font-weight:600;">管理者メールアドレス</label>
+<input type="email" id="adminEmail" placeholder="例: demo@sakura-demo.jp">
+
+<label style="font-size:13px;font-weight:600;">パスワード</label>
+<input type="password" id="adminPassword" placeholder="パスワード">
+
+<button id="runBtn" onclick="runSetup()">demo_sessions を自動作成する</button>
+<div id="log">メールアドレスとパスワードを入力して実行してください...</div>
+
+<script>
+const log = document.getElementById('log');
+const btn = document.getElementById('runBtn');
+
+function addLog(msg, type) {
+  const span = document.createElement('span');
+  span.className = type || '';
+  span.textContent = msg + '\n';
+  log.appendChild(span);
+}
+
+// 90日後のタイムスタンプ
+function expiresAt90days() {
+  const d = new Date();
+  d.setDate(d.getDate() + 90);
+  return firebase.firestore.Timestamp.fromDate(d);
+}
+
+const sessions = [
+  {
+    uid:   '3OYNjOMXnMMyOT18kMIB5jzBxf43',
+    email: 'demo@sakura-demo.jp',
+    label: '一般デモ用',
+    role:  'demo_user'
+  },
+  {
+    uid:   'mDhPI2ngephnxK6IFwubwSbPIaO2',
+    email: 'oem@sakura-demo.jp',
+    label: 'OEMパートナー候補A社',
+    role:  'demo_user'
+  },
+  {
+    uid:   'zTR6JJzUm3R3nnOmUAGlwjxXbbR2',
+    email: 'agent@sakura-demo.jp',
+    label: '代理店候補B社',
+    role:  'demo_user'
+  }
+];
+
+async function runSetup() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass  = document.getElementById('adminPassword').value;
+  if (!email || !pass) { alert('メールアドレスとパスワードを入力してください。'); return; }
+
+  btn.disabled = true;
+  log.textContent = '';
+  addLog('セットアップを開始します...');
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+    const db   = firebase.firestore();
+    const auth = firebase.auth();
+
+    // Email/Password でサインイン
+    await auth.signInWithEmailAndPassword(email, pass);
+    addLog('✓ ログイン完了', 'ok');
+
+    const exp = expiresAt90days();
+    addLog(`  有効期限: ${exp.toDate().toLocaleDateString('ja-JP')} まで`);
+    addLog('');
+
+    // 3件の demo_sessions ドキュメントを作成
+    for (const s of sessions) {
+      try {
+        await db.collection('demo_sessions').doc(s.uid).set({
+          email:     s.email,
+          role:      s.role,
+          label:     s.label,
+          active:    true,
+          disabled:  false,
+          expiresAt: exp
+        });
+        addLog(`✓ ${s.email} (${s.label})`, 'ok');
+      } catch (e) {
+        addLog(`✗ ${s.email} → エラー: ${e.message}`, 'err');
+      }
+    }
+
+    addLog('');
+    addLog('✅ セットアップ完了！', 'ok');
+    addLog('次のステップ: Firebase Console > Firestore > ルール を v12 に更新してください。');
+
+  } catch (e) {
+    if (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+      addLog('✗ ログインエラー: メールアドレスまたはパスワードが違います。', 'err');
+    } else if (e.code === 'permission-denied') {
+      addLog('✗ 権限エラー: Firestore ルールで書き込みが拒否されました。', 'err');
+      addLog('  → Firebase Console > Firestore > ルール に一時ルールを適用してから再実行してください。', 'warn');
+    } else {
+      addLog('✗ エラー: ' + e.message, 'err');
+    }
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
