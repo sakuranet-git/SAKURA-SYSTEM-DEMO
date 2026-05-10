@@ -81,8 +81,6 @@ async function runSeed() {
       throw new Error('有効なデモセッションがありません。管理者アカウントを確認してください。');
     }
     addLog('✓ 管理者認証 完了', 'ok');
-    const uid = cred.user.uid;
-    const TS  = firebase.firestore.Timestamp;
 
     // 顧客データ
     addLog('\n--- 顧客データ ---');
@@ -96,66 +94,6 @@ async function runSeed() {
     for (const inv of invoices) {
       await db.collection('invoices').doc(inv.id).set({ ...inv, seededAt: firebase.firestore.FieldValue.serverTimestamp() });
       addLog(`✓ ${inv.invoiceNumber} (${inv.clientName})`, 'ok');
-    }
-
-    // ── v0.2.0: グループウェアシードデータ ──
-
-    // 掲示板
-    addLog('\n--- 掲示板（demo_board_posts）---');
-    const now = TS.now();
-    const boardPosts = [
-      { title: 'SAKURA SYSTEM デモ環境へようこそ', body: 'このデモ環境では、顧客管理・請求書・グループウェアの各機能をお試しいただけます。\n\nサンプルデータは架空のものです。安心してご操作ください。', category: 'お知らせ' },
-      { title: '今月の定例会議について', body: '来週月曜日の定例会議は、通常通り午前10時からの予定です。\n議題：Q2進捗確認・新規顧客対応フロー・システム改善提案\n\n参加必須でお願いします。', category: '業務連絡' },
-      { title: '先日のランチ会ありがとうございました！', body: '先週のチームランチ会、楽しかったですね。\n次回は来月を予定しています。また詳細をお知らせします。', category: '雑談' }
-    ];
-    for (const p of boardPosts) {
-      await db.collection('demo_board_posts').add({
-        title: p.title, body: p.body, category: p.category,
-        isDemo: true, archived: false,
-        createdAt: now, createdBy: uid
-      });
-      addLog(`✓ [${p.category}] ${p.title}`, 'ok');
-    }
-
-    // タスク
-    addLog('\n--- タスク（demo_todos）---');
-    const todos = [
-      { title: '架空商事 光回線 設定確認書を提出する', priority: '高', dueDate: (() => { const d = new Date(); d.setDate(d.getDate()+7); return d.toISOString().split('T')[0]; })(), memo: '開通後30日以内に要提出' },
-      { title: 'デモ環境マニュアルを最新版に更新する',  priority: '中', dueDate: (() => { const d = new Date(); d.setDate(d.getDate()+14); return d.toISOString().split('T')[0]; })(), memo: 'グループウェア機能の説明を追記' },
-      { title: '月次レポート草案を確認する',              priority: '低', dueDate: '', memo: '' }
-    ];
-    for (const t of todos) {
-      const doc = {
-        title: t.title, priority: t.priority, done: false,
-        isDemo: true, archived: false,
-        createdAt: now, createdBy: uid
-      };
-      if (t.dueDate) doc.dueDate = t.dueDate;
-      if (t.memo)    doc.memo    = t.memo;
-      await db.collection('demo_todos').add(doc);
-      addLog(`✓ [${t.priority}] ${t.title}`, 'ok');
-    }
-
-    // カレンダー
-    addLog('\n--- カレンダー（demo_calendar_events）---');
-    const d5 = new Date(); d5.setDate(d5.getDate()+5); d5.setHours(10,0,0,0);
-    const d5e= new Date(d5); d5e.setHours(11,0,0,0);
-    const d10= new Date(); d10.setDate(d10.getDate()+10); d10.setHours(0,0,0,0);
-    const d20= new Date(); d20.setDate(d20.getDate()+20); d20.setHours(0,0,0,0);
-    const calEvs = [
-      { title: 'チームミーティング', startAt: TS.fromDate(d5), endAt: TS.fromDate(d5e), allDay: false, memo: '週次定例・各自進捗共有' },
-      { title: '月次定例会議',       startAt: TS.fromDate(d10), endAt: TS.fromDate(d10), allDay: true,  memo: 'Q2進捗・方針確認' },
-      { title: 'システムメンテナンス', startAt: TS.fromDate(d20), endAt: TS.fromDate(d20), allDay: true, memo: '深夜0:00〜6:00 予定' }
-    ];
-    for (const e of calEvs) {
-      const doc = {
-        title: e.title, startAt: e.startAt, endAt: e.endAt, allDay: e.allDay,
-        isDemo: true, archived: false,
-        createdAt: now, createdBy: uid
-      };
-      if (e.memo) doc.memo = e.memo;
-      await db.collection('demo_calendar_events').add(doc);
-      addLog(`✓ ${e.title}`, 'ok');
     }
 
     addLog('\n✅ 全データの投入が完了しました！', 'ok');

@@ -1,5 +1,46 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.2.0 (2026-05-10) — グループウェア追加（Phase 2-A 完了）
+
+### 追加（Phase 2-A §8.2 実装）
+
+**グループウェア機能（クリーンルーム実装）**
+- `groupware.html` 新規作成
+  - ダッシュボード・掲示板・タスク管理・カレンダー 4タブ構成
+  - Firestore: `demo_board_posts` / `demo_todos` / `demo_calendar_events` / `demo_audit_log` 使用
+  - 既存の業務ロジック（ordersystem / invoice）には一切変更なし
+  - Email/Password + demo_sessions 認証（v0.1.8 と同一方式）
+  - 全操作に `isDemo: true` 付与・論理削除（archived）のみ・物理 delete 禁止
+
+**ナビゲーションバー更新（4ページ対応）**
+- `ordersystem.html` — ナビに「🏢 グループウェア」追加（認証コード・ナビ以外変更なし）
+- `invoice.html` — ナビに「🏢 グループウェア」追加（認証コード・ナビ以外変更なし）
+
+**シードデータ更新（v2）**
+- `tools/seed-firestore.html` — グループウェア用シードデータ追加
+  - 掲示板: 3件（お知らせ・業務連絡・雑談）
+  - タスク: 3件（高・中・低 優先度）
+  - カレンダー: 3件（今後の予定）
+
+**Firestore Rules**（変更なし）
+- v0.1.8 で既にデプロイ済みの v12 Rules（demo_* コレクション対応済み）
+
+**バックアップ**
+- `backups/v0.1.8/` に v0.1.8 時点のファイルを保存済み
+
+### WinSCP アップロード対象（v0.2.0）
+
+サーバーパス: `/home/sakura-nets/www/demo/`
+
+| ファイル | 変更 |
+|---------|------|
+| `groupware.html` | ✨ 新規 |
+| `ordersystem.html` | ナビバーのみ変更 |
+| `invoice.html` | ナビバーのみ変更 |
+| `tools/seed-firestore.html` | グループウェアシードデータ追加 |
+
+---
+
 ## v0.1.8 (2026-05-09) — 認証移行（Email/Password + demo_sessions）
 
 ### 変更（Phase 2-A §13.1 実装）

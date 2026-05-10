@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>SAKURA-NET グループウェア</title>
+    <!-- Firebase SDK (V8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- DEMO設定（gitignore済み・サーバーに別途アップロード） -->
+    <script src="firebase-config.demo.js"></script>
+    <script>
+        // ⚠️ DEMO環境専用 — 設定は firebase-config.demo.js から読み込む（gitignore済み）
+        firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+        const db = firebase.firestore();
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            db.useEmulator('127.0.0.1', 8080);
+        }
+        // v0.1.8: Email/Password + demo_sessions 認証チェック
+        let currentUser = null;
+        firebase.auth().onAuthStateChanged(async function(user) {
+            if (!user) { window.location.href = 'index.html'; return; }
+            try {
+                const snap = await db.collection('demo_sessions').doc(user.uid).get();
+                const d = snap.data();
+                if (!snap.exists || !d.active || d.disabled || d.expiresAt.toDate() < new Date()) {
+                    await firebase.auth().signOut();
+                    window.location.href = 'index.html';
+                    return;
+                }
+                currentUser = user;
+                document.getElementById('user-email').textContent = user.email;
+                loadAll();
+            } catch(e) { window.location.href = 'index.html'; }
+        });
+        // 緊急停止チェック
+        db.collection('demo_config').doc('emergency_stop').get().then(snap => {
+            if (snap.exists && snap.data().enabled) {
+                const reason = snap.data().reason || 'メンテナンス中です。';
+                document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff5f0;"><div style="text-align:center;padding:40px;"><h1 style="color:#d32f2f;font-size:28px;">⛔ デモ環境停止中</h1><p style="margin-top:16px;color:#615d59;font-size:16px;">${reason}</p></div></div>`;
+            }
+        }).catch(() => {});
+    </script>
+    <style>
+        :root {
+            --primary: #c82054;
+            --primary-light: #fff0f5;
+            --text-main: #333;
+            --text-dim: #615d59;
+            --text-muted: #a39e98;
+            --bg-body: #f6f5f4;
+            --bg-card: #ffffff;
+            --border: rgba(0,0,0,0.08);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', 'Meiryo', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* ── TAB BAR ── */
+        .tab-bar {
+            position: fixed;
+            top: 68px;
+            left: 0; right: 0;
+            z-index: 99990;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            padding: 0 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .tab-btn {
+            padding: 10px 18px;
+            border: none;
+            background: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        /* ── LAYOUT ── */
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .main-content {
+            padding: 24px;
+            margin-top: 112px;
+            max-width: 960px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .card-title { font-size: 15px; font-weight: 700; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn:hover { opacity: 0.87; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 4px; }
+        .btn-ghost {
+            background: none;
+            color: var(--text-dim);
+            border: 1px solid #ddd;
+        }
+        .btn-ghost:hover { background: #f6f5f4; color: var(--text-main); opacity: 1; }
+        .btn-danger { background: #dd5b00; }
+        .btn-danger:hover { opacity: 0.87; }
+
+        /* ── FORM ── */
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-main);
+            transition: border-color 0.15s;
+            background: #fff;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .form-textarea { resize: vertical; min-height: 80px; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 100000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 24px;
+            width: 500px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .modal-title { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 20px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+        /* ── BOARD ── */
+        .board-post {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+        .board-post:hover { box-shadow: var(--shadow-md); border-color: rgba(200,32,84,0.2); }
+        .board-post-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .cat-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .cat-notice { background: #fff3e0; color: #e65100; }
+        .cat-work   { background: #e3f2fd; color: #1565c0; }
+        .cat-general{ background: #f3e5f5; color: #6a1b9a; }
+        .board-post-title { font-size: 14px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .board-post-body  { font-size: 13px; color: #555; max-height: 42px; overflow: hidden; line-height: 1.6; }
+        .board-post-meta  { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+        /* ── TODO ── */
+        .todo-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            box-shadow: var(--shadow-sm);
+            transition: opacity 0.2s;
+        }
+        .todo-item.done-item { opacity: 0.5; }
+        .todo-check {
+            width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px;
+            border: 2px solid #ccc; border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .todo-check.done { background: var(--primary); border-color: var(--primary); }
+        .todo-check.done::after { content: '✓'; color: #fff; font-size: 11px; font-weight: 900; }
+        .todo-title { font-size: 14px; font-weight: 600; }
+        .todo-item.done-item .todo-title { text-decoration: line-through; color: #bbb; }
+        .todo-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .p-high { color: #c62828; font-weight: 700; }
+        .p-mid  { color: #e65100; font-weight: 700; }
+        .p-low  { color: #1565c0; font-weight: 700; }
+
+        /* ── CALENDAR ── */
+        .cal-nav-bar { display: flex; align-items: center; gap: 12px; }
+        .cal-nav-btn {
+            background: none; border: 1px solid #ddd; border-radius: 6px;
+            padding: 4px 12px; cursor: pointer; font-size: 15px; font-family: inherit;
+        }
+        .cal-nav-btn:hover { background: #f6f5f4; }
+        .cal-month-title { font-size: 18px; font-weight: 800; min-width: 140px; }
+        .cal-grid-header {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 2px;
+        }
+        .cal-day-label {
+            text-align: center; font-size: 11px; font-weight: 700;
+            color: var(--text-muted); padding: 4px 0;
+        }
+        .cal-day-label:first-child { color: #c62828; }
+        .cal-day-label:last-child  { color: #1565c0; }
+        .cal-grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .cal-cell {
+            min-height: 76px; padding: 4px 5px;
+            border: 1px solid #f0f0f0; border-radius: 4px;
+            background: #fff; cursor: pointer;
+        }
+        .cal-cell:hover { border-color: rgba(200,32,84,0.3); }
+        .cal-cell.other-month { background: #fafafa; opacity: 0.45; pointer-events: none; }
+        .cal-cell.today { border-color: var(--primary); background: var(--primary-light); }
+        .cal-date { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 2px; }
+        .cal-cell.today .cal-date { color: var(--primary); }
+        .cal-event-chip {
+            font-size: 10px; background: var(--primary); color: #fff;
+            padding: 1px 5px; border-radius: 3px; margin-top: 2px;
+            overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+        }
+        .cal-event-chip.allday { background: #7c3aed; }
+
+        /* ── DASHBOARD GRID ── */
+        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 640px) { .dash-grid { grid-template-columns: 1fr; } }
+        .dash-row {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .dash-row:last-child { border-bottom: none; }
+
+        /* ── MISC ── */
+        .page-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+        .empty-state { text-align: center; padding: 36px 24px; color: var(--text-muted); }
+        .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+        .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+        .filter-bar .form-select { width: auto; }
+
+        /* ── VIEW MODAL ── */
+        .view-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+        .view-body  { font-size: 14px; color: #444; white-space: pre-wrap; line-height: 1.8; }
+        .view-meta  { font-size: 11px; color: var(--text-muted); margin-top: 16px; }
+    </style>
+</head>
+<body>
+
+<!-- DEMO バナー -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#d32f2f;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:bold;letter-spacing:0.5px;">
+  ⚠️ これはデモ環境です。入力データは架空のものです。本番環境とは完全に分離されています。
+</div>
+
+<!-- ナビゲーションバー -->
+<nav style="position:fixed;top:28px;left:0;right:0;z-index:99998;background:#fff;border-bottom:1px solid rgba(0,0,0,0.1);padding:6px 12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.04);font-family:Inter,-apple-system,system-ui,'Hiragino Sans',sans-serif;">
+  <a href="ordersystem.html" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">👥 顧客管理</a>
+  <a href="invoice.html"     style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">📄 請求書</a>
+  <a href="groupware.html"   style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#0075de;color:#fff;">🏢 グループウェア</a>
+  <a href="manual-user.html" target="_blank" style="display:inline-block;padding:6px 14px;margin:0 4px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#f6f5f4;color:#615d59;">📖 使い方ガイド</a>
+  <a href="javascript:void(0)" onclick="if(confirm('ログアウトしますか？')){firebase.auth().signOut().then(()=>{location.href='index.html';}).catch(()=>{location.href='index.html';});}" style="display:inline-block;padding:6px 14px;margin:0 4px 0 16px;border-radius:4px;font-size:13px;font-weight:600;text-decoration:none;background:#fff5f0;color:#dd5b00;border:1px solid rgba(221,91,0,0.2);">🚪 ログアウト</a>
+</nav>
+
+<!-- タブバー -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('home',this)">🏠 ダッシュボード</button>
+  <button class="tab-btn" onclick="showTab('board',this)">📝 掲示板</button>
+  <button class="tab-btn" onclick="showTab('todo',this)">✅ タスク</button>
+  <button class="tab-btn" onclick="showTab('calendar',this)">📅 カレンダー</button>
+  <span id="user-email" style="margin-left:auto;font-size:11px;color:var(--text-muted);align-self:center;padding-right:4px;"></span>
+</div>
+
+<!-- メインコンテンツ -->
+<div class="main-content">
+
+  <!-- ── ダッシュボード ── -->
+  <div id="panel-home" class="panel active">
+    <div class="page-title">🏠 ダッシュボード</div>
+    <div class="dash-grid">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 掲示板 最新投稿</div></div>
+        <div id="dash-board"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">✅ 未完了タスク</div></div>
+        <div id="dash-todo"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">📅 今後の予定</div></div>
+      <div id="dash-calendar"></div>
+    </div>
+  </div>
+
+  <!-- ── 掲示板 ── -->
+  <div id="panel-board" class="panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📝 掲示板</div>
+        <button class="btn btn-sm" onclick="openBoardModal()">＋ 新規投稿</button>
+      </div>
+      <div class="filter-bar">
+        <select class="form-select" id="board-filter" onchange="renderBoard()">
+          <option value="">すべてのカテゴリ</option>
+          <option value="お知らせ">お知らせ</option>
+          <option value="業務連絡">業務連絡</option>
+          <option value="雑談">雑談</option>
+        </select>
+      </div>
+      <div id="board-list"></div>
+    </div>
+  </div>
+
+  <!-- ── タスク ── -->
+  <div id="panel-todo" class="panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">✅ タスク管理</div>
+        <button class="btn btn-sm" onclick="openTodoModal()">＋ タスク追加</button>
+      </div>
+      <div class="filter-bar">
+        <select class="form-select" id="todo-pfilter" onchange="renderTodos()" style="width:auto;">
+          <option value="">優先度：すべて</option>
+          <option value="高">🔴 高</option>
+          <option value="中">🟡 中</option>
+          <option value="低">🔵 低</option>
+        </select>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="todo-hide-done" onchange="renderTodos()"> 完了を非表示
+        </label>
+      </div>
+      <div id="todo-list"></div>
+    </div>
+  </div>
+
+  <!-- ── カレンダー ── -->
+  <div id="panel-calendar" class="panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="cal-nav-bar">
+          <button class="cal-nav-btn" onclick="calMove(-1)">◀</button>
+          <div class="cal-month-title" id="cal-title"></div>
+          <button class="cal-nav-btn" onclick="calMove(1)">▶</button>
+          <button class="cal-nav-btn" onclick="calToday()" style="font-size:12px;padding:4px 10px;">今月</button>
+        </div>
+        <button class="btn btn-sm" onclick="openCalModal()">＋ 予定追加</button>
+      </div>
+      <div class="cal-grid-header">
+        <div class="cal-day-label">日</div><div class="cal-day-label">月</div>
+        <div class="cal-day-label">火</div><div class="cal-day-label">水</div>
+        <div class="cal-day-label">木</div><div class="cal-day-label">金</div>
+        <div class="cal-day-label">土</div>
+      </div>
+      <div class="cal-grid-body" id="cal-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="cal-list-title" style="margin-bottom:12px;"></div>
+      <div id="cal-event-list"></div>
+    </div>
+  </div>
+
+</div><!-- /main-content -->
+
+<!-- ── 掲示板 投稿モーダル ── -->
+<div class="modal-overlay" id="board-modal">
+  <div class="modal">
+    <div class="modal-title">📝 <span id="board-modal-title">新規投稿</span></div>
+    <input type="hidden" id="board-edit-id">
+    <div class="form-group">
+      <label class="form-label">カテゴリ</label>
+      <select class="form-select" id="board-cat">
+        <option value="お知らせ">お知らせ</option>
+        <option value="業務連絡">業務連絡</option>
+        <option value="雑談">雑談</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">タイトル <span style="color:#c62828">*</span></label>
+      <input type="text" class="form-input" id="board-title" placeholder="タイトルを入力..." maxlength="200">
+    </div>
+    <div class="form-group">
+      <label class="form-label">本文 <span style="color:#c62828">*</span></label>
+      <textarea class="form-textarea" id="board-body" placeholder="本文を入力..." maxlength="3000" rows="6"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBoardModal()">キャンセル</button>
+      <button class="btn" onclick="saveBoard()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 掲示板 閲覧モーダル ── -->
+<div class="modal-overlay" id="view-board-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <span id="view-cat" class="cat-badge"></span>
+    </div>
+    <div id="view-title" class="view-title"></div>
+    <div id="view-body" class="view-body"></div>
+    <div id="view-meta" class="view-meta"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" id="view-edit-btn" onclick="startEditBoard()">✏️ 編集</button>
+      <button class="btn btn-danger btn-sm" id="view-archive-btn" onclick="archiveBoard()">🗂 アーカイブ</button>
+      <button class="btn" onclick="closeViewModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── タスクモーダル ── -->
+<div class="modal-overlay" id="todo-modal">
+  <div class="modal">
+    <div class="modal-title">✅ <span id="todo-modal-title">タスク追加</span></div>
+    <input type="hidden" id="todo-edit-id">
+    <div class="form-group">
+      <label class="form-label">タイトル <span style="color:#c62828">*</span></label>
+      <input type="text" class="form-input" id="todo-title" placeholder="タスク名を入力..." maxlength="200">
+    </div>
+    <div class="form-group">
+      <label class="form-label">優先度</label>
+      <select class="form-select" id="todo-priority">
+        <option value="高">🔴 高</option>
+        <option value="中" selected>🟡 中</option>
+        <option value="低">🔵 低</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">期限</label>
+      <input type="date" class="form-input" id="todo-due">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-textarea" id="todo-memo" placeholder="補足情報..." maxlength="3000" rows="3"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTodoModal()">キャンセル</button>
+      <button class="btn" onclick="saveTodo()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── カレンダーモーダル ── -->
+<div class="modal-overlay" id="cal-modal">
+  <div class="modal">
+    <div class="modal-title">📅 <span id="cal-modal-title">予定追加</span></div>
+    <input type="hidden" id="cal-edit-id">
+    <div class="form-group">
+      <label class="form-label">タイトル <span style="color:#c62828">*</span></label>
+      <input type="text" class="form-input" id="cal-ev-title" placeholder="予定のタイトルを入力..." maxlength="200">
+    </div>
+    <div class="form-group">
+      <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="cal-allday" onchange="toggleAlldayMode()"> 終日
+      </label>
+    </div>
+    <!-- 通常時: datetime-local -->
+    <div id="cal-dt-group">
+      <div class="form-group">
+        <label class="form-label">開始日時 <span style="color:#c62828">*</span></label>
+        <input type="datetime-local" class="form-input" id="cal-start-dt">
+      </div>
+      <div class="form-group">
+        <label class="form-label">終了日時</label>
+        <input type="datetime-local" class="form-input" id="cal-end-dt">
+      </div>
+    </div>
+    <!-- 終日時: date -->
+    <div id="cal-d-group" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">開始日 <span style="color:#c62828">*</span></label>
+        <input type="date" class="form-input" id="cal-start-d">
+      </div>
+      <div class="form-group">
+        <label class="form-label">終了日（省略可）</label>
+        <input type="date" class="form-input" id="cal-end-d">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-textarea" id="cal-memo" placeholder="メモ..." maxlength="3000" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeCalModal()">キャンセル</button>
+      <button class="btn" onclick="saveCal()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let boards = [];
+let todos  = [];
+let calEvs = [];
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let viewingBoardId = null;
+const TS = firebase.firestore.Timestamp;
+const FV = firebase.firestore.FieldValue;
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(ts) {
+    if (!ts?.toDate) return '';
+    return ts.toDate().toLocaleDateString('ja-JP', { year:'numeric', month:'short', day:'numeric' });
+}
+function fmtDateTime(ts) {
+    if (!ts?.toDate) return '';
+    return ts.toDate().toLocaleString('ja-JP', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function catClass(cat) {
+    return cat === 'お知らせ' ? 'cat-notice' : cat === '業務連絡' ? 'cat-work' : 'cat-general';
+}
+function priClass(p) {
+    return p === '高' ? 'p-high' : p === '中' ? 'p-mid' : 'p-low';
+}
+function priEmoji(p) {
+    return p === '高' ? '🔴' : p === '中' ? '🟡' : '🔵';
+}
+
+async function writeAudit(action, col, docId) {
+    try {
+        await db.collection('demo_audit_log').add({
+            actorUid: currentUser.uid, action, collection: col, docId,
+            isDemo: true, createdAt: TS.now()
+        });
+    } catch(e) { /* best-effort */ }
+}
+
+// ══════════════════════════════════════════
+// TAB
+// ══════════════════════════════════════════
+function showTab(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+}
+function switchTab(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+        const names = ['home','board','todo','calendar'];
+        b.classList.toggle('active', names[i] === name);
+    });
+    document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// LOAD ALL
+// ══════════════════════════════════════════
+async function loadAll() {
+    await Promise.all([loadBoards(), loadTodos(), loadCalEvs()]);
+    renderDash();
+}
+
+// ══════════════════════════════════════════
+// BOARD
+// ══════════════════════════════════════════
+async function loadBoards() {
+    try {
+        const snap = await db.collection('demo_board_posts').get();
+        boards = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if (!d.archived) boards.push({ id: doc.id, ...d });
+        });
+        boards.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+        renderBoard();
+    } catch(e) { console.error('loadBoards:', e); }
+}
+
+function renderBoard() {
+    const filter = document.getElementById('board-filter')?.value || '';
+    const list = filter ? boards.filter(b => b.category === filter) : boards;
+    const el = document.getElementById('board-list');
+    if (!el) return;
+    if (!list.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>投稿はありません</p></div>';
+        return;
+    }
+    el.innerHTML = list.map(b => `
+        <div class="board-post" onclick="viewBoard('${b.id}')">
+            <div class="board-post-header">
+                <span class="cat-badge ${catClass(b.category)}">${esc(b.category)}</span>
+                <span class="board-post-title">${esc(b.title)}</span>
+            </div>
+            <div class="board-post-body">${esc(b.body)}</div>
+            <div class="board-post-meta">${fmtDate(b.createdAt)}</div>
+        </div>`).join('');
+}
+
+function viewBoard(id) {
+    const b = boards.find(x => x.id === id);
+    if (!b) return;
+    viewingBoardId = id;
+    document.getElementById('view-cat').className   = 'cat-badge ' + catClass(b.category);
+    document.getElementById('view-cat').textContent = b.category;
+    document.getElementById('view-title').textContent = b.title;
+    document.getElementById('view-body').textContent  = b.body;
+    document.getElementById('view-meta').textContent  = '投稿日: ' + fmtDate(b.createdAt);
+    const isOwn = b.createdBy === currentUser?.uid;
+    document.getElementById('view-edit-btn').style.display    = isOwn ? '' : 'none';
+    document.getElementById('view-archive-btn').style.display = isOwn ? '' : 'none';
+    document.getElementById('view-board-modal').classList.add('open');
+}
+
+function closeViewModal() {
+    document.getElementById('view-board-modal').classList.remove('open');
+    viewingBoardId = null;
+}
+
+function startEditBoard() {
+    const b = boards.find(x => x.id === viewingBoardId);
+    closeViewModal();
+    if (b) openBoardModal(b);
+}
+
+async function archiveBoard() {
+    if (!viewingBoardId) return;
+    if (!confirm('この投稿をアーカイブしますか？')) return;
+    const b = boards.find(x => x.id === viewingBoardId);
+    if (!b) return;
+    try {
+        const now = TS.now();
+        await db.collection('demo_board_posts').doc(b.id).update({
+            archived: true, archivedAt: now, archivedBy: currentUser.uid,
+            updatedAt: now, updatedBy: currentUser.uid, isDemo: true
+        });
+        await writeAudit('archive', 'demo_board_posts', b.id);
+        closeViewModal();
+        await loadBoards();
+        renderDash();
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+function openBoardModal(post = null) {
+    document.getElementById('board-edit-id').value       = post?.id || '';
+    document.getElementById('board-modal-title').textContent = post ? '投稿を編集' : '新規投稿';
+    document.getElementById('board-cat').value           = post?.category || 'お知らせ';
+    document.getElementById('board-title').value         = post?.title || '';
+    document.getElementById('board-body').value          = post?.body  || '';
+    document.getElementById('board-modal').classList.add('open');
+}
+function closeBoardModal() { document.getElementById('board-modal').classList.remove('open'); }
+
+async function saveBoard() {
+    const title = document.getElementById('board-title').value.trim();
+    const body  = document.getElementById('board-body').value.trim();
+    const cat   = document.getElementById('board-cat').value;
+    const editId= document.getElementById('board-edit-id').value;
+    if (!title) { alert('タイトルを入力してください。'); return; }
+    if (!body)  { alert('本文を入力してください。');    return; }
+    if (!currentUser) { alert('認証エラー。リロードしてください。'); return; }
+    try {
+        const now = TS.now();
+        if (editId) {
+            await db.collection('demo_board_posts').doc(editId).update({
+                title, body, category: cat,
+                updatedAt: now, updatedBy: currentUser.uid,
+                isDemo: true, archived: false
+            });
+            await writeAudit('update', 'demo_board_posts', editId);
+        } else {
+            const ref = await db.collection('demo_board_posts').add({
+                title, body, category: cat,
+                isDemo: true, createdAt: now, createdBy: currentUser.uid, archived: false
+            });
+            await writeAudit('create', 'demo_board_posts', ref.id);
+        }
+        closeBoardModal();
+        await loadBoards();
+        renderDash();
+    } catch(e) { alert('保存に失敗しました: ' + e.message); }
+}
+
+// ══════════════════════════════════════════
+// TODO
+// ══════════════════════════════════════════
+async function loadTodos() {
+    try {
+        const snap = await db.collection('demo_todos').get();
+        todos = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if (!d.archived) todos.push({ id: doc.id, ...d });
+        });
+        const pOrd = { '高':0, '中':1, '低':2 };
+        todos.sort((a,b) => {
+            if (a.done !== b.done) return a.done ? 1 : -1;
+            return (pOrd[a.priority]||1) - (pOrd[b.priority]||1);
+        });
+        renderTodos();
+    } catch(e) { console.error('loadTodos:', e); }
+}
+
+function renderTodos() {
+    const pf      = document.getElementById('todo-pfilter')?.value || '';
+    const hideDone= document.getElementById('todo-hide-done')?.checked || false;
+    let list = todos;
+    if (pf)      list = list.filter(t => t.priority === pf);
+    if (hideDone) list = list.filter(t => !t.done);
+    const el = document.getElementById('todo-list');
+    if (!el) return;
+    if (!list.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>タスクがありません</p></div>';
+        return;
+    }
+    el.innerHTML = list.map(t => {
+        const due  = t.dueDate ? `<span>📅 ${esc(t.dueDate)}</span>` : '';
+        const memo = t.memo ? `<span>📝 ${esc(t.memo.substring(0,40))}${t.memo.length>40?'…':''}</span>` : '';
+        const isOwn = t.createdBy === currentUser?.uid;
+        return `<div class="todo-item ${t.done ? 'done-item' : ''}">
+            <div class="todo-check ${t.done ? 'done' : ''}" onclick="toggleTodo('${t.id}')"></div>
+            <div style="flex:1;min-width:0;">
+                <div class="todo-title">${esc(t.title)}</div>
+                <div class="todo-meta">
+                    <span class="${priClass(t.priority)}">${priEmoji(t.priority)} ${esc(t.priority)}</span>
+                    ${due}${memo}
+                </div>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button class="btn btn-ghost btn-sm" onclick="editTodo('${t.id}')">編集</button>
+                ${isOwn ? `<button class="btn btn-ghost btn-sm" onclick="archiveTodo('${t.id}')" title="アーカイブ">🗂</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function toggleTodo(id) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    try {
+        const now = TS.now();
+        await db.collection('demo_todos').doc(id).update({
+            done: !t.done,
+            updatedAt: now, updatedBy: currentUser.uid,
+            isDemo: true, archived: false
+        });
+        await writeAudit('update', 'demo_todos', id);
+        t.done = !t.done;
+        renderTodos();
+        renderDash();
+    } catch(e) { alert('更新に失敗しました: ' + e.message); }
+}
+
+function editTodo(id) {
+    const t = todos.find(x => x.id === id);
+    if (t) openTodoModal(t);
+}
+
+async function archiveTodo(id) {
+    if (!confirm('このタスクをアーカイブしますか？')) return;
+    try {
+        const now = TS.now();
+        await db.collection('demo_todos').doc(id).update({
+            archived: true, archivedAt: now, archivedBy: currentUser.uid,
+            updatedAt: now, updatedBy: currentUser.uid, isDemo: true
+        });
+        await writeAudit('archive', 'demo_todos', id);
+        todos = todos.filter(x => x.id !== id);
+        renderTodos();
+        renderDash();
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+function openTodoModal(todo = null) {
+    document.getElementById('todo-edit-id').value           = todo?.id || '';
+    document.getElementById('todo-modal-title').textContent = todo ? 'タスクを編集' : 'タスク追加';
+    document.getElementById('todo-title').value    = todo?.title    || '';
+    document.getElementById('todo-priority').value = todo?.priority || '中';
+    document.getElementById('todo-due').value      = todo?.dueDate  || '';
+    document.getElementById('todo-memo').value     = todo?.memo     || '';
+    document.getElementById('todo-modal').classList.add('open');
+}
+function closeTodoModal() { document.getElementById('todo-modal').classList.remove('open'); }
+
+async function saveTodo() {
+    const title  = document.getElementById('todo-title').value.trim();
+    const pri    = document.getElementById('todo-priority').value;
+    const due    = document.getElementById('todo-due').value;
+    const memo   = document.getElementById('todo-memo').value.trim();
+    const editId = document.getElementById('todo-edit-id').value;
+    if (!title) { alert('タイトルを入力してください。'); return; }
+    if (!currentUser) { alert('認証エラー。リロードしてください。'); return; }
+    try {
+        const now = TS.now();
+        if (editId) {
+            const upd = {
+                title, priority: pri,
+                dueDate: due || FV.delete(),
+                memo:    memo || FV.delete(),
+                updatedAt: now, updatedBy: currentUser.uid,
+                isDemo: true, archived: false
+            };
+            await db.collection('demo_todos').doc(editId).update(upd);
+            await writeAudit('update', 'demo_todos', editId);
+        } else {
+            const doc = { title, priority: pri, done: false, archived: false, isDemo: true, createdAt: now, createdBy: currentUser.uid };
+            if (due)  doc.dueDate = due;
+            if (memo) doc.memo    = memo;
+            const ref = await db.collection('demo_todos').add(doc);
+            await writeAudit('create', 'demo_todos', ref.id);
+        }
+        closeTodoModal();
+        await loadTodos();
+        renderDash();
+    } catch(e) { alert('保存に失敗しました: ' + e.message); }
+}
+
+// ══════════════════════════════════════════
+// CALENDAR
+// ══════════════════════════════════════════
+async function loadCalEvs() {
+    try {
+        const snap = await db.collection('demo_calendar_events').get();
+        calEvs = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if (!d.archived) calEvs.push({ id: doc.id, ...d });
+        });
+        calEvs.sort((a,b) => (a.startAt?.seconds||0) - (b.startAt?.seconds||0));
+        renderCal();
+    } catch(e) { console.error('loadCalEvs:', e); }
+}
+
+function renderCal() {
+    const lbl = `${calYear}年${calMonth+1}月`;
+    const t1 = document.getElementById('cal-title');
+    const t2 = document.getElementById('cal-list-title');
+    if (t1) t1.textContent = lbl;
+    if (t2) t2.textContent = '📋 ' + lbl + ' の予定一覧';
+
+    // グリッド構築
+    const first = new Date(calYear, calMonth, 1);
+    const last  = new Date(calYear, calMonth+1, 0);
+    const today = new Date();
+    const cells = [];
+    for (let i = 0; i < first.getDay(); i++)
+        cells.push({ d: new Date(calYear, calMonth, 1 - first.getDay() + i), other: true });
+    for (let d = 1; d <= last.getDate(); d++)
+        cells.push({ d: new Date(calYear, calMonth, d), other: false });
+    while (cells.length % 7 !== 0)
+        cells.push({ d: new Date(calYear, calMonth+1, cells.length - last.getDate() - first.getDay() + 1), other: true });
+
+    const grid = document.getElementById('cal-grid');
+    if (!grid) return;
+    grid.innerHTML = cells.map(cell => {
+        const isToday = !cell.other && cell.d.toDateString() === today.toDateString();
+        const dateStr = cell.d.toISOString().split('T')[0];
+        const evs = calEvs.filter(e => {
+            if (!e.startAt?.toDate) return false;
+            return e.startAt.toDate().toISOString().split('T')[0] === dateStr;
+        });
+        const chips = evs.slice(0,2).map(e =>
+            `<div class="cal-event-chip ${e.allDay?'allday':''}" title="${esc(e.title)}"
+                  onclick="event.stopPropagation();editCalEv('${e.id}')">${esc(e.title.substring(0,7))}${e.title.length>7?'…':''}</div>`
+        ).join('');
+        const more = evs.length > 2 ? `<div style="font-size:10px;color:#aaa;margin-top:1px;">+${evs.length-2}件</div>` : '';
+        const cls = `cal-cell${cell.other?' other-month':''}${isToday?' today':''}`;
+        return `<div class="${cls}" onclick="openCalModal(null,'${dateStr}')">
+            <div class="cal-date">${cell.d.getDate()}</div>${chips}${more}</div>`;
+    }).join('');
+
+    // イベント一覧
+    const evList = document.getElementById('cal-event-list');
+    if (!evList) return;
+    const monthEvs = calEvs.filter(e => {
+        if (!e.startAt?.toDate) return false;
+        const s = e.startAt.toDate();
+        return s.getFullYear() === calYear && s.getMonth() === calMonth;
+    });
+    if (!monthEvs.length) {
+        evList.innerHTML = '<div class="empty-state"><div class="icon">📅</div><p>この月の予定はありません</p></div>';
+        return;
+    }
+    evList.innerHTML = monthEvs.map(e => {
+        const startStr = e.allDay ? fmtDate(e.startAt) : fmtDateTime(e.startAt);
+        const isOwn = e.createdBy === currentUser?.uid;
+        return `<div class="todo-item" style="cursor:pointer;" onclick="editCalEv('${e.id}')">
+            <div style="flex:1;min-width:0;">
+                <div class="todo-title">${esc(e.title)}</div>
+                <div class="todo-meta">
+                    <span>📅 ${startStr}${e.allDay?' (終日)':''}</span>
+                    ${e.memo ? `<span>📝 ${esc(e.memo.substring(0,40))}${e.memo.length>40?'…':''}</span>` : ''}
+                </div>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCalEv('${e.id}')">編集</button>
+                ${isOwn ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();archiveCalEv('${e.id}')" title="アーカイブ">🗂</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function calMove(d) { calMonth += d; if (calMonth < 0) { calMonth=11; calYear--; } if (calMonth > 11) { calMonth=0; calYear++; } renderCal(); }
+function calToday()  { calYear = new Date().getFullYear(); calMonth = new Date().getMonth(); renderCal(); }
+
+function toggleAlldayMode() {
+    const allDay = document.getElementById('cal-allday').checked;
+    document.getElementById('cal-dt-group').style.display = allDay ? 'none' : '';
+    document.getElementById('cal-d-group').style.display  = allDay ? '' : 'none';
+}
+
+function openCalModal(ev = null, prefillDate = null) {
+    document.getElementById('cal-edit-id').value           = ev?.id || '';
+    document.getElementById('cal-modal-title').textContent = ev ? '予定を編集' : '予定追加';
+    document.getElementById('cal-ev-title').value = ev?.title || '';
+    document.getElementById('cal-memo').value     = ev?.memo  || '';
+    const allDay = ev?.allDay || false;
+    document.getElementById('cal-allday').checked = allDay;
+    toggleAlldayMode();
+    if (allDay) {
+        document.getElementById('cal-start-d').value = ev ? ev.startAt.toDate().toISOString().split('T')[0] : (prefillDate || '');
+        document.getElementById('cal-end-d').value   = ev?.endAt ? ev.endAt.toDate().toISOString().split('T')[0] : '';
+    } else {
+        document.getElementById('cal-start-dt').value = ev ? ev.startAt.toDate().toISOString().slice(0,16) : (prefillDate ? prefillDate+'T09:00' : '');
+        document.getElementById('cal-end-dt').value   = ev?.endAt ? ev.endAt.toDate().toISOString().slice(0,16) : (prefillDate ? prefillDate+'T10:00' : '');
+    }
+    document.getElementById('cal-modal').classList.add('open');
+}
+function closeCalModal() { document.getElementById('cal-modal').classList.remove('open'); }
+
+function editCalEv(id) {
+    const e = calEvs.find(x => x.id === id);
+    if (e) openCalModal(e);
+}
+
+async function archiveCalEv(id) {
+    if (!confirm('この予定をアーカイブしますか？')) return;
+    try {
+        const now = TS.now();
+        await db.collection('demo_calendar_events').doc(id).update({
+            archived: true, archivedAt: now, archivedBy: currentUser.uid,
+            updatedAt: now, updatedBy: currentUser.uid, isDemo: true
+        });
+        await writeAudit('archive', 'demo_calendar_events', id);
+        calEvs = calEvs.filter(x => x.id !== id);
+        renderCal();
+        renderDash();
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+async function saveCal() {
+    const title  = document.getElementById('cal-ev-title').value.trim();
+    const allDay = document.getElementById('cal-allday').checked;
+    const memo   = document.getElementById('cal-memo').value.trim();
+    const editId = document.getElementById('cal-edit-id').value;
+    if (!title) { alert('タイトルを入力してください。'); return; }
+
+    let startAt, endAt;
+    try {
+        if (allDay) {
+            const sd = document.getElementById('cal-start-d').value;
+            const ed = document.getElementById('cal-end-d').value;
+            if (!sd) { alert('開始日を入力してください。'); return; }
+            startAt = TS.fromDate(new Date(sd + 'T00:00:00'));
+            endAt   = ed ? TS.fromDate(new Date(ed + 'T23:59:59')) : startAt;
+        } else {
+            const sdt = document.getElementById('cal-start-dt').value;
+            const edt = document.getElementById('cal-end-dt').value;
+            if (!sdt) { alert('開始日時を入力してください。'); return; }
+            startAt = TS.fromDate(new Date(sdt));
+            endAt   = edt ? TS.fromDate(new Date(edt)) : startAt;
+        }
+    } catch(e) { alert('日時の形式が正しくありません。'); return; }
+
+    if (!currentUser) { alert('認証エラー。リロードしてください。'); return; }
+    try {
+        const now = TS.now();
+        const baseData = { title, startAt, endAt, allDay, isDemo: true };
+        if (memo) baseData.memo = memo;
+        if (editId) {
+            const upd = { ...baseData, memo: memo || FV.delete(), updatedAt: now, updatedBy: currentUser.uid, archived: false };
+            await db.collection('demo_calendar_events').doc(editId).update(upd);
+            await writeAudit('update', 'demo_calendar_events', editId);
+        } else {
+            const doc = { ...baseData, archived: false, createdAt: now, createdBy: currentUser.uid };
+            const ref = await db.collection('demo_calendar_events').add(doc);
+            await writeAudit('create', 'demo_calendar_events', ref.id);
+        }
+        closeCalModal();
+        await loadCalEvs();
+        renderDash();
+    } catch(e) { alert('保存に失敗しました: ' + e.message); }
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDash() {
+    // 掲示板
+    const bEl = document.getElementById('dash-board');
+    if (bEl) {
+        const recent = boards.slice(0,3);
+        if (!recent.length) {
+            bEl.innerHTML = '<div class="empty-state"><p>投稿がありません</p></div>';
+        } else {
+            bEl.innerHTML = recent.map(b => `
+                <div class="dash-row" onclick="switchTab('board');setTimeout(()=>viewBoard('${b.id}'),50);" style="cursor:pointer;">
+                    <span class="cat-badge ${catClass(b.category)}" style="font-size:10px;">${esc(b.category)}</span>
+                    <span style="font-size:13px;font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${esc(b.title)}</span>
+                    <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">${fmtDate(b.createdAt)}</span>
+                </div>`).join('');
+        }
+    }
+    // タスク
+    const tEl = document.getElementById('dash-todo');
+    if (tEl) {
+        const pending = todos.filter(t => !t.done).slice(0,5);
+        if (!pending.length) {
+            tEl.innerHTML = '<div class="empty-state"><p>未完了タスクはありません 🎉</p></div>';
+        } else {
+            tEl.innerHTML = pending.map(t => `
+                <div class="dash-row">
+                    <span>${priEmoji(t.priority)}</span>
+                    <span style="font-size:13px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${esc(t.title)}</span>
+                    ${t.dueDate ? `<span style="font-size:11px;color:var(--text-muted);">📅${esc(t.dueDate)}</span>` : ''}
+                </div>`).join('');
+        }
+    }
+    // カレンダー
+    const cEl = document.getElementById('dash-calendar');
+    if (cEl) {
+        const now = new Date();
+        const upcoming = calEvs.filter(e => e.startAt?.toDate && e.startAt.toDate() >= now).slice(0,5);
+        if (!upcoming.length) {
+            cEl.innerHTML = '<div class="empty-state"><p>今後の予定はありません</p></div>';
+        } else {
+            cEl.innerHTML = upcoming.map(e => {
+                const s = e.allDay ? fmtDate(e.startAt) : fmtDateTime(e.startAt);
+                return `<div class="dash-row">
+                    <span style="font-size:13px;font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">📅 ${esc(e.title)}</span>
+                    <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">${s}</span>
+                </div>`;
+            }).join('');
+        }
+    }
+}
+</script>
+</body>
+</html>
