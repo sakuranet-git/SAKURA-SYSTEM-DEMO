@@ -1,5 +1,54 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.3.0 (2026-05-11) — SAKURA OS 追加（Phase 2-B 完了）
+
+### 追加（Phase 2-B 実装）
+
+**SAKURA OS デモ版（クリーンルーム実装）**
+- `sakura-os.html` 新規作成（OS 風ランチャー）
+  - 認証: Email/Password + `demo_sessions` 検証（v0.1.8 と同一方式）
+  - 緊急停止チェック: `demo_config/emergency_stop`
+  - 左パネル: 時計（JST・和暦・曜日）/ 天気（Open-Meteo・大阪）/ アプリグリッド / 為替（open.er-api.com）
+  - メインパネル: ニュース固定ダミー（外部 API なし）/ カレンダーウィジェット / タスクウィジェット
+  - ウィンドウマネージャー: ドラッグ / リサイズ / 最小化 / 最大化 / 閉じる
+  - タスクバー: 起動中アプリ一覧
+  - 壁紙: CSS グラデーション 9 種プリセット / スライドショー（プリセット ID のみ保存）
+  - SAKURA AI: B案（準備中タイル + モーダルのみ・iframe/通信ゼロ）
+  - DEMO バナー（赤・固定）新規設置
+
+**セキュリティ実装（Codex 4 回レビュー承認済み）**
+- iframe URL allowlist: `APP_ALLOWLIST` 4 件固定・任意 URL 受け付けない
+- `iframe sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer"`
+- localStorage ラッパー: `lsSet/lsGet/lsRemove`（`sakura_demo_os_` prefix 強制・禁止値検査）
+- CSP メタタグ: `default-src 'self'` ベース・本番ドメイン禁止
+- 本番 PHP API（gw_api.php / get_wallpapers.php）・sakura-ai 配下への通信ゼロ
+
+**Firestore 連携（read only）**
+- `demo_calendar_events` onSnapshot（デスクトップカレンダー表示）
+- `demo_todos` onSnapshot（本日のタスク表示）
+- 新規コレクション不要（Rules 変更なし）
+
+**ナビゲーションバー更新（3ページ）**
+- `ordersystem.html` — ナビに「🖥️ SAKURA OS」追加（業務ロジック変更なし）
+- `invoice.html` — ナビに「🖥️ SAKURA OS」追加（業務ロジック変更なし）
+- `groupware.html` — ナビに「🖥️ SAKURA OS」追加（業務ロジック変更なし）
+
+**バックアップ**
+- `backups/v0.2.0/` に v0.2.0 時点のファイルを保存済み
+
+### WinSCP アップロード対象（v0.3.0）
+
+サーバーパス: `/home/sakura-nets/www/demo/`
+
+| ファイル | 変更 |
+|---------|------|
+| `sakura-os.html` | ✨ 新規（SAKURA OS デモ版） |
+| `ordersystem.html` | ナビバーのみ変更（SAKURA OS リンク追加） |
+| `invoice.html` | ナビバーのみ変更（SAKURA OS リンク追加） |
+| `groupware.html` | ナビバーのみ変更（SAKURA OS リンク追加） |
+
+---
+
 ## v0.2.0 (2026-05-10) — グループウェア追加（Phase 2-A 完了）
 
 ### 追加（Phase 2-A §8.2 実装）

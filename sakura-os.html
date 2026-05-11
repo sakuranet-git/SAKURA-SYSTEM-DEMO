@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.open-meteo.com https://open.er-api.com; frame-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <title>SAKURA OS — DEMO</title>
+  <!-- Firebase SDK v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- DEMO設定（gitignore済み・サーバー別途アップロード） -->
+  <script src="firebase-config.demo.js"></script>
+  <style>
+    /* ── RESET ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #c82054;
+      --text-dim: #615d59;
+      --text-muted: #a39e98;
+      --bg-card: #ffffff;
+      --border: rgba(0,0,0,0.08);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.15);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+      --radius: 12px;
+      --radius-sm: 6px;
+      --banner-h: 28px;
+      --topbar-h: 48px;
+      --taskbar-h: 48px;
+      --left-w: 260px;
+    }
+    body {
+      font-family: 'Inter', 'Meiryo', 'Yu Gothic', sans-serif;
+      min-height: 100vh;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #f0f0f0;
+      transition: background 0.6s ease;
+    }
+
+    /* ── LOADING ── */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: #0f0f23;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 999999;
+      transition: opacity 0.5s ease;
+    }
+    #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+    .loading-logo { font-size: 30px; font-weight: 800; color: #fff; letter-spacing: 3px; }
+    .loading-logo span { color: #ffb3c8; }
+    .loading-sub { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 8px; letter-spacing: 2px; }
+    .loading-bar-wrap {
+      width: 200px; height: 3px;
+      background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 28px; overflow: hidden;
+    }
+    .loading-bar {
+      height: 100%; background: var(--primary); border-radius: 2px;
+      animation: loadbar 1.4s ease-in-out forwards;
+    }
+    @keyframes loadbar { 0% { width:0 } 60% { width:75% } 100% { width:100% } }
+
+    /* ── DEMO BANNER ── */
+    #demo-banner {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--banner-h); z-index: 99999;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      user-select: none;
+    }
+
+    /* ── TOPBAR ── */
+    #topbar {
+      position: fixed;
+      top: var(--banner-h); left: 0; right: 0;
+      height: var(--topbar-h); z-index: 9990;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: center; padding: 0 16px; gap: 10px;
+    }
+    #topbar-logo {
+      font-size: 17px; font-weight: 800; color: #fff;
+      letter-spacing: 2px; text-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap;
+    }
+    #topbar-logo span { color: #ffb3c8; }
+    #topbar-spacer { flex: 1; }
+    #topbar-user { font-size: 12px; color: rgba(255,255,255,0.7); white-space: nowrap; }
+    .topbar-btn {
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; padding: 5px 12px; border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: background 0.15s; white-space: nowrap;
+    }
+    .topbar-btn:hover { background: rgba(255,255,255,0.22); }
+    .topbar-btn.danger { background: rgba(200,32,84,0.55); border-color: rgba(200,32,84,0.7); }
+    .topbar-btn.danger:hover { background: rgba(200,32,84,0.8); }
+
+    /* ── DESKTOP ── */
+    #desktop {
+      position: fixed;
+      top: calc(var(--banner-h) + var(--topbar-h));
+      left: 0; right: 0; bottom: var(--taskbar-h);
+      overflow: hidden;
+    }
+
+    /* ── LEFT PANEL ── */
+    #left-panel {
+      position: absolute; top: 0; left: 0; bottom: 0; width: var(--left-w);
+      background: rgba(0,0,0,0.42);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-direction: column;
+      overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+    }
+    #left-panel::-webkit-scrollbar { display: none; }
+    .lp-section { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .lp-section-title {
+      font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4);
+      letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;
+    }
+
+    /* Clock */
+    #clock-time { font-size: 34px; font-weight: 700; color: #fff; letter-spacing: 3px; line-height: 1; }
+    #clock-date { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 5px; line-height: 1.5; }
+
+    /* Weather */
+    #weather-display { display: flex; align-items: center; gap: 12px; }
+    #weather-icon { font-size: 30px; }
+    #weather-temp { font-size: 22px; font-weight: 700; color: #fff; }
+    #weather-desc { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
+    /* App Grid */
+    #app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .app-tile {
+      background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; padding: 11px 6px; text-align: center;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
+      position: relative; user-select: none;
+    }
+    .app-tile:hover { background: rgba(255,255,255,0.18); transform: scale(1.05); }
+    .app-tile:active { transform: scale(0.96); }
+    .app-tile-icon { font-size: 22px; line-height: 1; }
+    .app-tile-name { font-size: 10px; color: rgba(255,255,255,0.82); margin-top: 5px; font-weight: 600; }
+    .app-tile-disabled { opacity: 0.48; cursor: not-allowed; }
+    .app-tile-disabled:hover { background: rgba(255,255,255,0.09); transform: none; }
+    .app-tile-disabled:active { transform: none; }
+    .app-status-badge {
+      position: absolute; top: 4px; right: 4px;
+      font-size: 8px; background: rgba(221,91,0,0.85); color: #fff;
+      padding: 1px 5px; border-radius: 3px; font-weight: 700;
+    }
+
+    /* Forex */
+    .forex-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .forex-pair { font-size: 11px; color: rgba(255,255,255,0.55); }
+    .forex-rate { font-size: 12px; font-weight: 700; color: #fff; }
+
+    /* ── MAIN PANEL ── */
+    #main-panel {
+      position: absolute; top: 0; left: var(--left-w); right: 0; bottom: 0;
+      padding: 14px; overflow-y: auto;
+      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr;
+      gap: 12px; align-content: start;
+    }
+
+    /* News Ticker */
+    #news-ticker-wrap {
+      grid-column: 1 / -1;
+      background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 8px 14px;
+      display: flex; align-items: center; gap: 10px; overflow: hidden;
+    }
+    #news-label {
+      font-size: 10px; font-weight: 800; color: var(--primary);
+      background: rgba(200,32,84,0.15); padding: 2px 8px;
+      border-radius: 4px; white-space: nowrap; letter-spacing: 1px; flex-shrink: 0;
+    }
+    #news-ticker { flex: 1; overflow: hidden; white-space: nowrap; }
+    #news-ticker-inner {
+      display: inline-block;
+      animation: ticker 35s linear infinite;
+    }
+    #news-ticker-inner:hover { animation-play-state: paused; }
+    .news-item { display: inline-block; padding: 0 28px; font-size: 12px; color: rgba(255,255,255,0.78); }
+    .news-item a { color: rgba(255,255,255,0.78); text-decoration: none; }
+    .news-item a:hover { color: #fff; }
+    @keyframes ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+
+    /* Widgets */
+    .desktop-widget {
+      background: rgba(0,0,0,0.32); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius); padding: 14px;
+      backdrop-filter: blur(4px);
+    }
+    .widget-title {
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.45);
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;
+    }
+
+    /* Calendar */
+    #calendar-month { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    #calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+    .cal-day-hd { font-size: 9px; color: rgba(255,255,255,0.38); padding: 2px 0; }
+    .cal-day {
+      font-size: 11px; color: rgba(255,255,255,0.72); padding: 4px 2px;
+      border-radius: 4px; cursor: default; position: relative;
+    }
+    .cal-day.today { background: var(--primary); color: #fff; font-weight: 700; }
+    .cal-day.has-event::after {
+      content: ''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
+      width: 3px; height: 3px; border-radius: 50%; background: #4ecca3;
+    }
+    .cal-day.empty { visibility: hidden; }
+
+    /* Tasks */
+    .task-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px; color: rgba(255,255,255,0.78);
+    }
+    .task-item:last-child { border-bottom: none; }
+    .task-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ecca3; flex-shrink: 0; margin-top: 4px; }
+    .task-title { flex: 1; line-height: 1.4; }
+    .task-empty { font-size: 12px; color: rgba(255,255,255,0.38); text-align: center; padding: 18px 0; }
+
+    /* ── OS WINDOWS ── */
+    .os-window {
+      position: absolute;
+      background: #fff; border-radius: 10px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden; display: flex; flex-direction: column;
+      min-width: 320px; min-height: 200px;
+    }
+    .os-window.maximized {
+      top: 0 !important; left: 0 !important;
+      width: 100% !important; height: 100% !important; border-radius: 0;
+    }
+    .os-window.minimized { display: none; }
+    .window-titlebar {
+      display: flex; align-items: center; padding: 0 12px; height: 38px;
+      background: linear-gradient(90deg, #c82054 0%, #e03164 100%);
+      cursor: move; user-select: none; flex-shrink: 0;
+    }
+    .window-title {
+      flex: 1; font-size: 13px; font-weight: 700; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .window-controls { display: flex; gap: 5px; }
+    .wc-btn {
+      width: 26px; height: 26px; border-radius: 5px; border: none; cursor: pointer;
+      font-size: 12px; display: flex; align-items: center; justify-content: center;
+      font-family: inherit; transition: background 0.12s;
+    }
+    .wc-minimize { background: rgba(255,255,255,0.18); color: #fff; }
+    .wc-minimize:hover { background: rgba(255,255,255,0.32); }
+    .wc-maximize { background: rgba(255,255,255,0.18); color: #fff; }
+    .wc-maximize:hover { background: rgba(255,255,255,0.32); }
+    .wc-close { background: rgba(255,80,80,0.35); color: #fff; }
+    .wc-close:hover { background: rgba(220,40,40,0.75); }
+    .window-body { flex: 1; overflow: hidden; position: relative; background: #f6f5f4; }
+    .window-body iframe { width: 100%; height: 100%; border: none; display: block; }
+    .window-loading {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #f6f5f4; font-size: 13px; color: #a39e98;
+    }
+    .window-resize-handle {
+      position: absolute; bottom: 0; right: 0; width: 16px; height: 16px;
+      cursor: se-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.12) 50%);
+    }
+
+    /* ── TASKBAR ── */
+    #taskbar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--taskbar-h); z-index: 9990;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(255,255,255,0.09);
+      display: flex; align-items: center; padding: 0 12px; gap: 6px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    #taskbar::-webkit-scrollbar { display: none; }
+    .tb-item {
+      display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer; white-space: nowrap; font-size: 12px; color: rgba(255,255,255,0.82);
+      font-family: inherit; transition: background 0.12s;
+      max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tb-item:hover { background: rgba(255,255,255,0.18); }
+    .tb-item.active { background: rgba(200,32,84,0.38); border-color: rgba(200,32,84,0.6); }
+    #taskbar-empty { font-size: 11px; color: rgba(255,255,255,0.28); padding: 0 6px; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 99000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: var(--radius);
+      padding: 28px; max-width: 420px; width: 90%;
+      box-shadow: var(--shadow-md);
+    }
+    .modal-title { font-size: 17px; font-weight: 700; color: #333; margin-bottom: 12px; }
+    .modal-body { font-size: 14px; color: var(--text-dim); line-height: 1.65; margin-bottom: 22px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btn {
+      padding: 8px 20px; border-radius: var(--radius-sm); border: none;
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s;
+    }
+    .modal-btn.primary { background: var(--primary); color: #fff; }
+    .modal-btn.primary:hover { opacity: 0.87; }
+
+    /* ── WALLPAPER PANEL ── */
+    #wallpaper-panel {
+      display: none; position: fixed;
+      top: calc(var(--banner-h) + var(--topbar-h) + 8px); right: 12px;
+      background: rgba(15,15,35,0.94); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: var(--radius); padding: 16px; z-index: 9970; width: 280px;
+      backdrop-filter: blur(20px);
+    }
+    #wallpaper-panel.open { display: block; }
+    .wp-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+    .wp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 14px; }
+    .wp-thumb {
+      height: 50px; border-radius: 6px; cursor: pointer;
+      border: 2px solid transparent; transition: border-color 0.15s, transform 0.1s;
+    }
+    .wp-thumb:hover { transform: scale(1.06); }
+    .wp-thumb.selected { border-color: var(--primary); }
+    .wp-sub-title { font-size: 10px; color: rgba(255,255,255,0.38); margin-bottom: 8px; letter-spacing: 1px; }
+    .wp-option-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: rgba(255,255,255,0.65); padding: 3px 0;
+    }
+    .wp-option-row input[type="checkbox"] { cursor: pointer; }
+    .wp-option-row select {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+      color: #fff; border-radius: 4px; padding: 2px 6px; font-family: inherit; font-size: 12px; cursor: pointer;
+    }
+    .wp-close-btn {
+      width: 100%; margin-top: 12px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.6); padding: 7px; border-radius: var(--radius-sm);
+      font-size: 12px; cursor: pointer; font-family: inherit;
+    }
+    .wp-close-btn:hover { background: rgba(255,255,255,0.15); }
+  </style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading-screen">
+  <div class="loading-logo">SAKURA <span>OS</span></div>
+  <div class="loading-sub">DEMO ENVIRONMENT</div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+</div>
+
+<!-- DEMOバナー -->
+<div id="demo-banner">⚡ DEMO ENVIRONMENT — さくらねっとシステムのデモ環境です</div>
+
+<!-- トップバー -->
+<div id="topbar">
+  <div id="topbar-logo">🌸 SAKURA <span>OS</span></div>
+  <div id="topbar-spacer"></div>
+  <div id="topbar-user"></div>
+  <button class="topbar-btn" onclick="toggleWallpaperPanel()" title="壁紙設定">🖼 壁紙</button>
+  <button class="topbar-btn danger" onclick="doLogout()">🚪 ログアウト</button>
+</div>
+
+<!-- デスクトップ -->
+<div id="desktop">
+
+  <!-- 左パネル -->
+  <div id="left-panel">
+
+    <!-- 時計 -->
+    <div class="lp-section">
+      <div id="clock-time">--:--:--</div>
+      <div id="clock-date">読み込み中...</div>
+    </div>
+
+    <!-- 天気 -->
+    <div class="lp-section">
+      <div class="lp-section-title">天気（大阪）</div>
+      <div id="weather-display">
+        <div id="weather-icon">☁️</div>
+        <div>
+          <div id="weather-temp">--°C</div>
+          <div id="weather-desc">取得中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- アプリグリッド -->
+    <div class="lp-section">
+      <div class="lp-section-title">アプリケーション</div>
+      <div id="app-grid">
+        <div class="app-tile" onclick="openApp('customer')">
+          <div class="app-tile-icon">📋</div>
+          <div class="app-tile-name">顧客管理</div>
+        </div>
+        <div class="app-tile" onclick="openApp('invoice')">
+          <div class="app-tile-icon">🧾</div>
+          <div class="app-tile-name">請求書</div>
+        </div>
+        <div class="app-tile" onclick="openApp('groupware')">
+          <div class="app-tile-icon">🏢</div>
+          <div class="app-tile-name">グループウェア</div>
+        </div>
+        <div class="app-tile" onclick="openApp('manual')">
+          <div class="app-tile-icon">📖</div>
+          <div class="app-tile-name">使い方ガイド</div>
+        </div>
+        <!-- B案: 準備中無効タイル — iframe/通信なし -->
+        <div class="app-tile app-tile-disabled" onclick="showAiPlaceholder()">
+          <div class="app-tile-icon">🤖</div>
+          <div class="app-tile-name">SAKURA AI</div>
+          <div class="app-status-badge">準備中</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 為替 -->
+    <div class="lp-section">
+      <div class="lp-section-title">為替レート</div>
+      <div class="forex-row"><span class="forex-pair">USD / JPY</span><span class="forex-rate" id="rate-usd">---</span></div>
+      <div class="forex-row"><span class="forex-pair">EUR / JPY</span><span class="forex-rate" id="rate-eur">---</span></div>
+      <div class="forex-row"><span class="forex-pair">CNY / JPY</span><span class="forex-rate" id="rate-cny">---</span></div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- メインパネル -->
+  <div id="main-panel">
+
+    <!-- ニューステッカー -->
+    <div id="news-ticker-wrap">
+      <div id="news-label">NEWS</div>
+      <div id="news-ticker">
+        <div id="news-ticker-inner"></div>
+      </div>
+    </div>
+
+    <!-- カレンダーウィジェット -->
+    <div class="desktop-widget" id="calendar-widget">
+      <div class="widget-title">📅 カレンダー</div>
+      <div id="calendar-month"></div>
+      <div id="calendar-grid"></div>
+    </div>
+
+    <!-- タスクウィジェット -->
+    <div class="desktop-widget" id="tasks-widget">
+      <div class="widget-title">✅ 本日のタスク</div>
+      <div id="tasks-list"><div class="task-empty">読み込み中...</div></div>
+    </div>
+
+  </div><!-- /main-panel -->
+
+  <!-- OS ウィンドウは JS で動的追加 -->
+
+</div><!-- /desktop -->
+
+<!-- タスクバー -->
+<div id="taskbar">
+  <div id="taskbar-empty">アプリを起動するとここに表示されます</div>
+</div>
+
+<!-- SAKURA AI 準備中モーダル -->
+<div class="modal-overlay" id="ai-modal">
+  <div class="modal-box">
+    <div class="modal-title">🤖 SAKURA AI（準備中）</div>
+    <div class="modal-body">SAKURA AI はデモ版では準備中です。本番環境でご体験ください。</div>
+    <div class="modal-actions">
+      <button class="modal-btn primary" onclick="closeModal('ai-modal')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 壁紙パネル -->
+<div id="wallpaper-panel">
+  <div class="wp-title">🖼 壁紙設定</div>
+  <div class="wp-grid" id="wp-grid"></div>
+  <div class="wp-sub-title">スライドショー</div>
+  <div class="wp-option-row">
+    <input type="checkbox" id="ss-enabled" onchange="onSlideshowChange()">
+    <label for="ss-enabled">スライドショー ON</label>
+  </div>
+  <div class="wp-option-row">
+    <span>切替間隔:</span>
+    <select id="ss-interval" onchange="onSlideshowIntervalChange()">
+      <option value="15">15秒</option>
+      <option value="30" selected>30秒</option>
+      <option value="60">1分</option>
+      <option value="120">2分</option>
+    </select>
+  </div>
+  <button class="wp-close-btn" onclick="toggleWallpaperPanel()">閉じる</button>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// セキュリティ定数
+// ============================================================
+
+const APP_ALLOWLIST = Object.freeze({
+  customer:  Object.freeze({ url: 'ordersystem.html',  title: '顧客管理',       icon: '📋', size: [1200, 720] }),
+  invoice:   Object.freeze({ url: 'invoice.html',      title: '請求書',         icon: '🧾', size: [1200, 760] }),
+  groupware: Object.freeze({ url: 'groupware.html',    title: 'グループウェア',  icon: '🏢', size: [1400, 820] }),
+  manual:    Object.freeze({ url: 'manual-user.html',  title: '使い方ガイド',   icon: '📖', size: [900,  640] })
+});
+
+const SAFE_PREFIX = 'sakura_demo_os_';
+
+const FORBIDDEN_KEY_PREFIXES = Object.freeze([
+  'sakura-net-db', 'sakura_ai', 'codex', 'relay',
+  'gw_', 'wp_', 'wallpaper_', 'mascot_', 'sticky_', 'ai_'
+]);
+
+const FORBIDDEN_VALUE_PATTERNS = Object.freeze([
+  /^data:image\/[a-z]+;base64,/i,
+  /^https?:\/\//i,
+  /sakuranet-co\.jp/i,
+  /sakura-net-db/i,
+  /sakura-ai/i,
+  /codex-relay/i
+]);
+
+function lsSet(key, value) {
+  if (typeof key !== 'string') throw new Error('[SAKURA OS] Non-string key');
+  if (!key.startsWith(SAFE_PREFIX)) throw new Error('[SAKURA OS] Missing prefix: ' + key);
+  for (const bad of FORBIDDEN_KEY_PREFIXES) {
+    if (key.includes(bad)) throw new Error('[SAKURA OS] Forbidden key fragment: ' + bad);
+  }
+  if (typeof value === 'string') {
+    for (const pat of FORBIDDEN_VALUE_PATTERNS) {
+      if (pat.test(value)) throw new Error('[SAKURA OS] Forbidden value in: ' + key);
+    }
+  }
+  localStorage.setItem(key, value);
+}
+
+function lsGet(key) {
+  if (typeof key !== 'string' || !key.startsWith(SAFE_PREFIX)) return null;
+  return localStorage.getItem(key);
+}
+
+function lsRemove(key) {
+  if (typeof key !== 'string' || !key.startsWith(SAFE_PREFIX)) return;
+  localStorage.removeItem(key);
+}
+
+// ============================================================
+// 固定ダミーニュース（外部 API 呼び出しなし）
+// ============================================================
+
+const DEMO_NEWS = Object.freeze([
+  { title: 'デモ環境へようこそ — SAKURA OS でフルスタック体験',                   url: '#', date: '2026-05-10' },
+  { title: '顧客管理アプリで顧客登録・編集・カレンダー連携をお試しください',           url: '#', date: '2026-05-10' },
+  { title: '請求書アプリで複数 PDF 添付・複数宛先送信をお試しください',               url: '#', date: '2026-05-10' },
+  { title: 'グループウェアで掲示板・カレンダー・タスク・申請をお試しください',          url: '#', date: '2026-05-10' },
+  { title: '本番環境のお問い合わせは sakuranet-co.jp までどうぞ',                    url: '#', date: '2026-05-10' }
+]);
+
+// ============================================================
+// 壁紙プリセット（CSS グラデーションのみ・ユーザー画像不可）
+// ============================================================
+
+const WALLPAPERS = Object.freeze([
+  { id: 'gradient_neutral', label: 'シンプル', bg: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)' },
+  { id: 'gradient_sakura',  label: '桜',      bg: 'linear-gradient(135deg,#3a0020 0%,#c82054 50%,#ff8fab 100%)' },
+  { id: 'gradient_ocean',   label: '海',      bg: 'linear-gradient(135deg,#023e8a 0%,#0077b6 50%,#00b4d8 100%)' },
+  { id: 'gradient_forest',  label: '森',      bg: 'linear-gradient(135deg,#081c15 0%,#1b4332 50%,#2d6a4f 100%)' },
+  { id: 'gradient_sunset',  label: '夕焼け',  bg: 'linear-gradient(135deg,#6a0572 0%,#d62828 40%,#f77f00 100%)' },
+  { id: 'gradient_night',   label: '夜空',    bg: 'linear-gradient(135deg,#03045e 0%,#0077b6 60%,#48cae4 100%)' },
+  { id: 'gradient_dawn',    label: '夜明け',  bg: 'linear-gradient(135deg,#6c5ce7 0%,#fd79a8 50%,#fdcb6e 100%)' },
+  { id: 'gradient_spring',  label: '春',      bg: 'linear-gradient(135deg,#134e4a 0%,#0f766e 50%,#5eead4 100%)' },
+  { id: 'gradient_autumn',  label: '秋',      bg: 'linear-gradient(135deg,#7c2d12 0%,#c2410c 50%,#ea580c 100%)' }
+]);
+const DEFAULT_WALLPAPER_ID = 'gradient_neutral';
+
+// ============================================================
+// Firebase 初期化
+// ============================================================
+
+firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+const db = firebase.firestore();
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  db.useEmulator('127.0.0.1', 8080);
+}
+
+let currentUser = null;
+let unsubCalendar = null;
+let unsubTodos    = null;
+
+// 認証状態監視
+firebase.auth().onAuthStateChanged(async function(user) {
+  if (!user) { location.href = 'index.html'; return; }
+  try {
+    const snap = await db.collection('demo_sessions').doc(user.uid).get();
+    if (!snap.exists) { await firebase.auth().signOut(); location.href = 'index.html'; return; }
+    const d = snap.data();
+    if (!d.active || d.disabled || d.expiresAt.toDate() < new Date() || d.email !== user.email) {
+      await firebase.auth().signOut(); location.href = 'index.html'; return;
+    }
+    currentUser = user;
+    document.getElementById('topbar-user').textContent = user.email;
+    emergencyStopCheck();
+    initOS();
+  } catch(e) {
+    console.error('[SAKURA OS] Auth error:', e);
+    location.href = 'index.html';
+  }
+});
+
+function emergencyStopCheck() {
+  db.collection('demo_config').doc('emergency_stop').get().then(snap => {
+    if (snap.exists && snap.data().enabled) {
+      const reason = snap.data().reason || 'メンテナンス中です。';
+      document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff5f0"><div style="text-align:center;padding:40px"><h1 style="color:#d32f2f;font-size:28px">⛔ デモ環境停止中</h1><p style="margin-top:16px;color:#615d59;font-size:16px">${reason}</p></div></div>`;
+    }
+  }).catch(() => {});
+}
+
+// ============================================================
+// OS 起動
+// ============================================================
+
+function initOS() {
+  // ローディング画面をフェードアウト
+  setTimeout(() => {
+    const ls = document.getElementById('loading-screen');
+    if (ls) {
+      ls.classList.add('fade-out');
+      setTimeout(() => ls.remove(), 550);
+    }
+  }, 900);
+
+  initWallpaper();
+  initClock();
+  fetchWeather();
+  fetchForex();
+  renderNews();
+  initCalendar();
+  initTasks();
+
+  // メモリリーク防止
+  window.addEventListener('beforeunload', () => {
+    unsubCalendar?.();
+    unsubTodos?.();
+  }, { once: true });
+}
+
+// ============================================================
+// 時計（JST・和暦・曜日）
+// ============================================================
+
+const JP_WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+const ERAS = [
+  { start: new Date('2019-05-01'), name: '令和', yearOffset: 2018 },
+  { start: new Date('1989-01-08'), name: '平成', yearOffset: 1988 }
+];
+
+function getEra(d) {
+  for (const e of ERAS) {
+    if (d >= e.start) return { name: e.name, year: d.getFullYear() - e.yearOffset };
+  }
+  return { name: '昭和', year: d.getFullYear() - 1925 };
+}
+
+function initClock() {
+  function tick() {
+    const jst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    const hh = String(jst.getHours()).padStart(2, '0');
+    const mm = String(jst.getMinutes()).padStart(2, '0');
+    const ss = String(jst.getSeconds()).padStart(2, '0');
+    document.getElementById('clock-time').textContent = `${hh}:${mm}:${ss}`;
+    const era = getEra(jst);
+    document.getElementById('clock-date').textContent =
+      `${era.name}${era.year}年 / ${jst.getFullYear()}年${jst.getMonth()+1}月${jst.getDate()}日\n${JP_WEEKDAYS[jst.getDay()]}曜日`;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ============================================================
+// 天気（Open-Meteo・大阪）
+// ============================================================
+
+const WMO_ICONS = {
+  0:'☀️', 1:'🌤', 2:'⛅', 3:'☁️', 45:'🌫', 48:'🌫',
+  51:'🌦', 53:'🌦', 55:'🌧', 61:'🌧', 63:'🌧', 65:'🌧',
+  71:'❄️', 73:'❄️', 75:'❄️', 80:'🌦', 81:'🌧', 82:'⛈',
+  95:'⛈', 96:'⛈', 99:'⛈'
+};
+
+async function fetchWeather() {
+  try {
+    const res = await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=34.6937&longitude=135.5023&current_weather=true&timezone=Asia%2FTokyo'
+    );
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const cw = data.current_weather;
+    document.getElementById('weather-icon').textContent = WMO_ICONS[cw.weathercode] || '🌡️';
+    document.getElementById('weather-temp').textContent = `${Math.round(cw.temperature)}°C`;
+    document.getElementById('weather-desc').textContent = `大阪 / 風速 ${cw.windspeed} km/h`;
+  } catch(e) {
+    console.warn('[SAKURA OS] Weather failed:', e);
+    document.getElementById('weather-desc').textContent = '気温データ取得失敗';
+  }
+}
+
+// ============================================================
+// 為替（open.er-api.com / JPY ベース）
+// ============================================================
+
+async function fetchForex() {
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/JPY');
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    if (data.result !== 'success') throw new Error('API error');
+    const r = data.rates;
+    // rates は 1JPY あたりの外貨量 → 1外貨 = (1/rate) 円
+    const fmt = (rate) => rate ? (1 / rate).toFixed(2) + ' 円' : '---';
+    document.getElementById('rate-usd').textContent = fmt(r.USD);
+    document.getElementById('rate-eur').textContent = fmt(r.EUR);
+    document.getElementById('rate-cny').textContent = fmt(r.CNY);
+  } catch(e) {
+    console.warn('[SAKURA OS] Forex failed:', e);
+    ['rate-usd', 'rate-eur', 'rate-cny'].forEach(id => {
+      document.getElementById(id).textContent = '取得失敗';
+    });
+  }
+}
+
+// ============================================================
+// ニューステッカー（固定ダミー）
+// ============================================================
+
+function renderNews() {
+  // 2 回繰り返してシームレスループ
+  const items = [...DEMO_NEWS, ...DEMO_NEWS];
+  document.getElementById('news-ticker-inner').innerHTML =
+    items.map(n => `<span class="news-item">${n.date} ─ <a href="${n.url}">${n.title}</a></span>`).join('');
+}
+
+// ============================================================
+// カレンダーウィジェット（Firestore onSnapshot・read only）
+// ============================================================
+
+let calendarEvents = [];
+
+function initCalendar() {
+  unsubCalendar = db.collection('demo_calendar_events')
+    .where('archived', '==', false)
+    .onSnapshot(snap => {
+      calendarEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderCalendar();
+    }, err => console.warn('[SAKURA OS] Calendar error:', err));
+}
+
+function renderCalendar() {
+  const jst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  const y = jst.getFullYear(), m = jst.getMonth(), today = jst.getDate();
+  document.getElementById('calendar-month').textContent = `${y}年${m + 1}月`;
+
+  const firstWday = new Date(y, m, 1).getDay();
+  const lastDate  = new Date(y, m + 1, 0).getDate();
+
+  const eventDays = new Set();
+  calendarEvents.forEach(ev => {
+    const d = ev.startAt?.toDate ? ev.startAt.toDate() : new Date(ev.startAt);
+    if (d.getFullYear() === y && d.getMonth() === m) eventDays.add(d.getDate());
+  });
+
+  const headers = '日月火水木金土'.split('').map(c => `<div class="cal-day-hd">${c}</div>`).join('');
+  const blanks  = Array.from({ length: firstWday }, () => `<div class="cal-day empty">0</div>`).join('');
+  const days    = Array.from({ length: lastDate }, (_, i) => {
+    const d = i + 1;
+    const cls = ['cal-day', d === today ? 'today' : '', eventDays.has(d) ? 'has-event' : ''].filter(Boolean).join(' ');
+    return `<div class="${cls}">${d}</div>`;
+  }).join('');
+  document.getElementById('calendar-grid').innerHTML = headers + blanks + days;
+}
+
+// ============================================================
+// タスクウィジェット（Firestore onSnapshot・read only）
+// ============================================================
+
+let todoList = [];
+
+function initTasks() {
+  unsubTodos = db.collection('demo_todos')
+    .where('archived', '==', false)
+    .where('done', '==', false)
+    .onSnapshot(snap => {
+      todoList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderTasks();
+    }, err => console.warn('[SAKURA OS] Tasks error:', err));
+}
+
+function renderTasks() {
+  const list = document.getElementById('tasks-list');
+  if (todoList.length === 0) {
+    list.innerHTML = '<div class="task-empty">未完了タスクはありません ✨</div>';
+    return;
+  }
+  list.innerHTML = todoList.slice(0, 8).map(t =>
+    `<div class="task-item"><div class="task-dot"></div><div class="task-title">${escHtml(t.title)}</div></div>`
+  ).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// ウィンドウマネージャー
+// ============================================================
+
+const openWindows = {};
+let zTop = 1000;
+let dragState   = null;
+let resizeState = null;
+
+// グローバルマウスハンドラ（ウィンドウ数に関わらず 1 回だけ登録）
+document.addEventListener('mousemove', e => {
+  if (dragState) {
+    const { appId, sx, sy, sl, st } = dragState;
+    const entry = openWindows[appId];
+    if (!entry || entry.maximized) return;
+    const newL = sl + e.clientX - sx;
+    const newT = Math.max(0, st + e.clientY - sy);
+    entry.el.style.left = newL + 'px';
+    entry.el.style.top  = newT + 'px';
+  }
+  if (resizeState) {
+    const { appId, sx, sy, sw, sh } = resizeState;
+    const entry = openWindows[appId];
+    if (!entry) return;
+    entry.el.style.width  = Math.max(320, sw + e.clientX - sx) + 'px';
+    entry.el.style.height = Math.max(200, sh + e.clientY - sy) + 'px';
+  }
+});
+document.addEventListener('mouseup', () => { dragState = null; resizeState = null; });
+
+function openApp(appId) {
+  // ① allowlist 検査（任意 URL / 任意文字列は受け取らない）
+  const app = APP_ALLOWLIST[appId];
+  if (!app) { console.warn('[SAKURA OS] Unknown appId rejected:', appId); return; }
+
+  // ② 同一オリジン検証
+  const resolved = new URL(app.url, location.href);
+  if (resolved.origin !== location.origin) {
+    console.error('[SAKURA OS] Cross-origin rejected:', resolved.origin);
+    return;
+  }
+
+  // 既存ウィンドウは前面に出す
+  if (openWindows[appId]) { focusOrRestore(appId); return; }
+
+  // ③ iframe 生成（sandbox 基本3属性・no-referrer）
+  const iframe = document.createElement('iframe');
+  iframe.src           = resolved.href;
+  iframe.sandbox       = 'allow-scripts allow-same-origin allow-forms';
+  iframe.loading       = 'lazy';
+  iframe.referrerPolicy = 'no-referrer';
+  iframe.title         = app.title;
+
+  createWindow(appId, app, iframe);
+}
+
+function createWindow(appId, app, iframe) {
+  const desktop = document.getElementById('desktop');
+  const [w, h]  = app.size;
+
+  // デスクトップ内に収まる初期サイズ・位置
+  const dw  = desktop.clientWidth  - 260;
+  const dh  = desktop.clientHeight;
+  const cnt = Object.keys(openWindows).length;
+  const initX = Math.min(270 + cnt * 24, Math.max(270, dw - w + 260));
+  const initY = Math.min(16  + cnt * 24, Math.max(0,  dh - h - 10));
+  const winW  = Math.min(w, Math.max(dw, 400));
+  const winH  = Math.min(h, Math.max(dh - 60, 200));
+
+  const win = document.createElement('div');
+  win.className = 'os-window';
+  win.id = 'win-' + appId;
+  win.style.cssText = `width:${winW}px;height:${winH}px;left:${initX}px;top:${initY}px;z-index:${++zTop}`;
+
+  win.innerHTML = `
+    <div class="window-titlebar" id="tb-${appId}">
+      <span class="window-title">${app.icon} ${app.title}</span>
+      <div class="window-controls">
+        <button class="wc-btn wc-minimize" onclick="minimizeWin('${appId}')" title="最小化">—</button>
+        <button class="wc-btn wc-maximize" onclick="toggleMaxWin('${appId}')" title="最大化">⬜</button>
+        <button class="wc-btn wc-close"    onclick="closeWin('${appId}')"    title="閉じる">✕</button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="window-loading">📂 読み込み中...</div>
+    </div>
+    <div class="window-resize-handle" id="rh-${appId}"></div>
+  `;
+
+  // iframe ロード完了でローディング表示を消す
+  iframe.addEventListener('load', () => {
+    const ld = win.querySelector('.window-loading');
+    if (ld) ld.remove();
+  }, { once: true });
+  win.querySelector('.window-body').appendChild(iframe);
+
+  // クリックで前面に
+  win.addEventListener('mousedown', () => bringToFront(appId));
+
+  desktop.appendChild(win);
+  openWindows[appId] = { app, el: win, minimized: false, maximized: false };
+
+  // ドラッグ設定
+  const titlebar = win.querySelector('.window-titlebar');
+  titlebar.addEventListener('mousedown', e => {
+    const entry = openWindows[appId];
+    if (!entry || entry.maximized || e.target.classList.contains('wc-btn')) return;
+    dragState = { appId, sx: e.clientX, sy: e.clientY, sl: parseInt(win.style.left)||0, st: parseInt(win.style.top)||0 };
+    bringToFront(appId);
+    e.preventDefault();
+  });
+
+  // リサイズ設定
+  const rh = document.getElementById('rh-' + appId);
+  rh.addEventListener('mousedown', e => {
+    const entry = openWindows[appId];
+    if (!entry || entry.maximized) return;
+    resizeState = { appId, sx: e.clientX, sy: e.clientY, sw: win.offsetWidth, sh: win.offsetHeight };
+    e.preventDefault(); e.stopPropagation();
+  });
+
+  addTaskbarItem(appId, app);
+  saveOpenWindows();
+}
+
+function bringToFront(appId) {
+  const entry = openWindows[appId];
+  if (entry) entry.el.style.zIndex = ++zTop;
+}
+
+function focusOrRestore(appId) {
+  const entry = openWindows[appId];
+  if (!entry) return;
+  if (entry.minimized) { restoreWin(appId); } else { bringToFront(appId); }
+}
+
+function minimizeWin(appId) {
+  const entry = openWindows[appId];
+  if (!entry) return;
+  entry.el.classList.add('minimized');
+  entry.minimized = true;
+  const tb = document.getElementById('tb-item-' + appId);
+  if (tb) tb.classList.remove('active');
+  saveOpenWindows();
+}
+
+function restoreWin(appId) {
+  const entry = openWindows[appId];
+  if (!entry) return;
+  entry.el.classList.remove('minimized');
+  entry.minimized = false;
+  bringToFront(appId);
+  const tb = document.getElementById('tb-item-' + appId);
+  if (tb) tb.classList.add('active');
+  saveOpenWindows();
+}
+
+function toggleMaxWin(appId) {
+  const entry = openWindows[appId];
+  if (!entry) return;
+  entry.maximized = !entry.maximized;
+  entry.el.classList.toggle('maximized', entry.maximized);
+  const rh = document.getElementById('rh-' + appId);
+  if (rh) rh.style.display = entry.maximized ? 'none' : '';
+}
+
+function closeWin(appId) {
+  const entry = openWindows[appId];
+  if (!entry) return;
+  entry.el.remove();
+  delete openWindows[appId];
+  removeTaskbarItem(appId);
+  saveOpenWindows();
+}
+
+function saveOpenWindows() {
+  try {
+    lsSet('sakura_demo_os_open_windows', JSON.stringify(Object.keys(openWindows)));
+  } catch(e) { console.warn('[SAKURA OS] saveOpenWindows:', e); }
+}
+
+// ============================================================
+// タスクバー
+// ============================================================
+
+function addTaskbarItem(appId, app) {
+  const taskbar = document.getElementById('taskbar');
+  const empty   = document.getElementById('taskbar-empty');
+  if (empty) empty.style.display = 'none';
+
+  const btn = document.createElement('button');
+  btn.className = 'tb-item active';
+  btn.id = 'tb-item-' + appId;
+  btn.textContent = `${app.icon} ${app.title}`;
+  btn.onclick = () => {
+    const entry = openWindows[appId];
+    if (!entry) return;
+    entry.minimized ? restoreWin(appId) : minimizeWin(appId);
+  };
+  taskbar.appendChild(btn);
+}
+
+function removeTaskbarItem(appId) {
+  const btn = document.getElementById('tb-item-' + appId);
+  if (btn) btn.remove();
+  if (Object.keys(openWindows).length === 0) {
+    const empty = document.getElementById('taskbar-empty');
+    if (empty) empty.style.display = '';
+  }
+}
+
+// ============================================================
+// 壁紙システム
+// ============================================================
+
+let slideshowTimer = null;
+let slideshowIdx   = 0;
+
+function initWallpaper() {
+  const savedId = lsGet('sakura_demo_os_wallpaper_id') || DEFAULT_WALLPAPER_ID;
+  applyWallpaper(savedId);
+  buildWallpaperPanel();
+
+  const ssEnabled  = lsGet('sakura_demo_os_slideshow_enabled') === '1';
+  const ssInterval = parseInt(lsGet('sakura_demo_os_slideshow_interval') || '30', 10);
+  const ssCheck = document.getElementById('ss-enabled');
+  const ssIntEl = document.getElementById('ss-interval');
+  if (ssCheck) ssCheck.checked = ssEnabled;
+  if (ssIntEl) ssIntEl.value  = String(ssInterval);
+  if (ssEnabled) startSlideshow(ssInterval);
+}
+
+function applyWallpaper(id) {
+  const wp = WALLPAPERS.find(w => w.id === id) || WALLPAPERS[0];
+  document.body.style.background = wp.bg;
+  try { lsSet('sakura_demo_os_wallpaper_id', wp.id); } catch(e) { /* ignore */ }
+  document.querySelectorAll('.wp-thumb').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === wp.id);
+  });
+  // スライドショーの現在インデックスを更新
+  const idx = WALLPAPERS.findIndex(w => w.id === wp.id);
+  if (idx >= 0) slideshowIdx = idx;
+}
+
+function buildWallpaperPanel() {
+  const savedId = lsGet('sakura_demo_os_wallpaper_id') || DEFAULT_WALLPAPER_ID;
+  const grid = document.getElementById('wp-grid');
+  if (!grid) return;
+  grid.innerHTML = WALLPAPERS.map(wp =>
+    `<div class="wp-thumb${wp.id === savedId ? ' selected' : ''}"
+         style="background:${wp.bg}"
+         data-id="${wp.id}" title="${wp.label}"
+         onclick="applyWallpaper('${wp.id}')"></div>`
+  ).join('');
+}
+
+function toggleWallpaperPanel() {
+  document.getElementById('wallpaper-panel')?.classList.toggle('open');
+}
+
+function onSlideshowChange() {
+  const enabled  = document.getElementById('ss-enabled').checked;
+  const interval = parseInt(document.getElementById('ss-interval').value, 10);
+  try { lsSet('sakura_demo_os_slideshow_enabled', enabled ? '1' : '0'); } catch(e) { /* ignore */ }
+  enabled ? startSlideshow(interval) : stopSlideshow();
+}
+
+function onSlideshowIntervalChange() {
+  const interval = parseInt(document.getElementById('ss-interval').value, 10);
+  try { lsSet('sakura_demo_os_slideshow_interval', String(interval)); } catch(e) { /* ignore */ }
+  if (document.getElementById('ss-enabled').checked) {
+    stopSlideshow();
+    startSlideshow(interval);
+  }
+}
+
+function startSlideshow(seconds) {
+  stopSlideshow();
+  slideshowTimer = setInterval(() => {
+    slideshowIdx = (slideshowIdx + 1) % WALLPAPERS.length;
+    applyWallpaper(WALLPAPERS[slideshowIdx].id);
+  }, seconds * 1000);
+}
+
+function stopSlideshow() {
+  if (slideshowTimer) { clearInterval(slideshowTimer); slideshowTimer = null; }
+}
+
+// ============================================================
+// モーダル
+// ============================================================
+
+function showAiPlaceholder() {
+  // iframe を開かない・sakura-ai / codex-relay への通信ゼロ
+  openModal('ai-modal');
+}
+
+function openModal(id) {
+  document.getElementById(id)?.classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+}
+
+// モーダル外クリックで閉じる
+document.addEventListener('click', e => {
+  document.querySelectorAll('.modal-overlay.open').forEach(el => {
+    if (e.target === el) closeModal(el.id);
+  });
+});
+
+// ============================================================
+// ログアウト
+// ============================================================
+
+function doLogout() {
+  if (!confirm('ログアウトしますか？')) return;
+  // 起動中ウィンドウ状態を削除（テーマ・壁紙・スライドショー設定は保持）
+  lsRemove('sakura_demo_os_open_windows');
+  unsubCalendar?.();
+  unsubTodos?.();
+  firebase.auth().signOut()
+    .then(() => { location.href = 'index.html'; })
+    .catch(() => { location.href = 'index.html'; });
+}
+
+// ============================================================
+// テーマ初期化（dark 固定・v0.3.x でトグル予定）
+// ============================================================
+
+(function initTheme() {
+  const saved = lsGet('sakura_demo_os_theme') || 'dark';
+  document.body.dataset.theme = saved;
+})();
+
+</script>
+</body>
+</html>
