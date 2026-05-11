@@ -1,47 +1,4 @@
 # SAKURA SYSTEM デモ環境 リリースノート
-## v0.4.0 (2026-05-11) — 勤怠管理Demo版追加
-
-### 追加
-- `timecard.html` — タイムカード、複数休憩、申請、管理者修正・承認、CSV出力
-- `timecard_shift.html` — シフト作成、希望シフト申請、管理者編集・アーカイブ
-- `timecard_applications.html` — 届出申請、有給付与、有給残数管理
-- `timecard_report.html` — 残業、有給、36協定アラート、給与CSV出力
-- `timecard_guide.html` — 初心者向け使い方ガイド
-
-### 変更
-- `firestore.rules` に勤怠管理Demo専用コレクションを追加
-- `tools/seed-firestore.html` に勤怠管理Demo用シードデータを追加
-- `sakura-os.html` のアプリグリッドと allowlist に「勤怠管理」を追加
-- `ordersystem.html` / `invoice.html` / `groupware.html` のナビに「勤怠管理」を追加
-
-### データ保護
-- 本番PHP勤怠管理は未変更
-- 既存Demoコレクションは維持
-- 勤怠管理は `demo_timecard_*` コレクションに分離
-- シフト削除操作は実削除ではなくアーカイブ保存
-
-### バックアップ
-- `backups/v0.4.0_timecard_demo_20260511/` に更新前ファイルを保存
-
-### WinSCP アップロード対象（v0.4.0）
-サーバーパス: `/home/sakura-nets/www/demo/`
-
-| ファイル | 変更 |
-|---------|------|
-| `timecard.html` | 新規 |
-| `timecard_shift.html` | 新規 |
-| `timecard_applications.html` | 新規 |
-| `timecard_report.html` | 新規 |
-| `timecard_guide.html` | 新規 |
-| `sakura-os.html` | 勤怠管理タイル追加 |
-| `ordersystem.html` | ナビ追加 |
-| `invoice.html` | ナビ追加 |
-| `groupware.html` | ナビ追加 |
-| `tools/seed-firestore.html` | 勤怠シード追加 |
-| `firestore.rules` | 勤怠Demoルール追加 |
-| `RELEASE_NOTES.md` | 本項目追加 |
-
----
 
 ## v0.3.1 (2026-05-11) — 使い方ガイド ログイン情報更新
 

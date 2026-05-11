@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勤怠管理 Demo | SAKURA SYSTEM</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-config.demo.js"></script>
+<style>
+:root{--brand:#0075de;--accent:#c82054;--bg:#f6f5f4;--panel:#fff;--text:#202124;--muted:#615d59;--line:rgba(0,0,0,.1);--ok:#16833a;--warn:#9a6400;--danger:#c62828;--shadow:rgba(31,35,40,.07) 0 12px 32px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,"Noto Sans JP",system-ui,sans-serif;font-size:16px}.demo-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:#d32f2f;color:#fff;text-align:center;padding:7px 12px;font-weight:800;font-size:13px}.shell{width:min(1240px,calc(100% - 32px));margin:0 auto;padding:56px 0 48px}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.eyebrow{color:var(--brand);font-size:12px;font-weight:900;letter-spacing:.08em}h1{margin:4px 0 0;font-size:34px}.nav{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.button,button{min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:9px 13px;text-decoration:none;font:inherit;font-weight:800;cursor:pointer}.primary{background:var(--brand);border-color:var(--brand);color:#fff}.danger{color:var(--danger)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px}.layout{display:grid;grid-template-columns:360px 1fr;gap:18px}.clock{text-align:center}.date-line{color:var(--muted);font-weight:800}.time{font-size:54px;font-weight:900;letter-spacing:0;font-variant-numeric:tabular-nums}.punch-grid,.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.summary{grid-template-columns:repeat(4,1fr)}.metric{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fbfbfb}.metric span{display:block;color:var(--muted);font-size:12px;font-weight:800}.metric strong{font-size:22px}.user-line{margin-top:14px;color:var(--muted);font-size:13px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.toolbar label{font-size:13px;color:var(--muted);font-weight:800}input,select{min-height:42px;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font:inherit;background:#fff}.table-wrap{overflow-x:auto}table{width:100%;min-width:980px;border-collapse:collapse}th,td{padding:12px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f8fafc;color:var(--muted);font-size:13px}.pill{display:inline-flex;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:900;background:#eaf4ff;color:#005fb8}.pill.ok{background:#eaf7ee;color:var(--ok)}.pill.warn{background:#fff7e6;color:var(--warn)}.pill.bad{background:#fff0f4;color:var(--danger)}.muted{color:var(--muted)}.toast{position:fixed;right:18px;bottom:18px;background:#111;color:#fff;border-radius:8px;padding:12px 14px;opacity:0;transform:translateY(8px);transition:.18s;z-index:9999}.toast.show{opacity:1;transform:translateY(0)}@media(max-width:860px){.shell{width:min(100% - 24px,680px);padding-top:58px}.topbar{flex-direction:column}.nav,.nav .button{width:100%}.layout{grid-template-columns:1fr}.summary{grid-template-columns:1fr 1fr}.time{font-size:46px}.punch-grid{grid-template-columns:1fr}table,tbody,tr,td{display:block;width:100%}table{min-width:0}thead{display:none}.table-wrap{overflow:visible}tr{border:1px solid var(--line);border-radius:12px;margin-top:12px;padding:12px 14px;background:#fff}td{display:grid;grid-template-columns:112px minmax(0,1fr);gap:10px;padding:9px 0}td:before{content:attr(data-label);color:var(--muted);font-size:13px;font-weight:800}}
+</style>
+</head>
+<body>
+<div class="demo-banner">DEMO版 - この画面はデモです。本番データではありません。</div>
+<main class="shell">
+  <div class="topbar">
+    <div><div class="eyebrow">SAKURA SYSTEM DEMO</div><h1>勤怠管理</h1><div class="user-line" id="userLine">認証確認中...</div></div>
+    <div class="nav">
+      <a class="button" href="timecard_guide.html">使い方</a>
+      <a class="button" href="timecard_shift.html">シフト</a>
+      <a class="button" href="timecard_applications.html">届出・有給</a>
+      <a class="button" href="timecard_report.html" id="reportLink" style="display:none">レポート</a>
+      <a class="button" href="sakura-os.html">SAKURA OS</a>
+    </div>
+  </div>
+  <div class="layout">
+    <section class="panel clock">
+      <div class="date-line" id="dateLine">--</div>
+      <div class="time" id="clockNow">--:--</div>
+      <div class="punch-grid">
+        <button class="primary" onclick="punch('clock_in')">出勤</button>
+        <button onclick="punch('break_start')">休憩開始</button>
+        <button onclick="punch('break_end')">休憩終了</button>
+        <button class="danger" onclick="punch('clock_out')">退勤</button>
+      </div>
+      <p class="muted" style="margin:14px 0 0">休憩は複数回登録できます。</p>
+    </section>
+    <section class="panel">
+      <div class="summary">
+        <div class="metric"><span>出勤</span><strong id="mIn">--</strong></div>
+        <div class="metric"><span>退勤</span><strong id="mOut">--</strong></div>
+        <div class="metric"><span>休憩</span><strong id="mBreak">0分</strong></div>
+        <div class="metric"><span>実働</span><strong id="mWork">0分</strong></div>
+      </div>
+      <div class="toolbar" style="margin-top:16px">
+        <label>対象月<br><input type="month" id="monthPicker"></label>
+        <label id="userFilterWrap" style="display:none">ユーザー<br><select id="userFilter"></select></label>
+        <button onclick="loadAll()">表示更新</button>
+        <button onclick="downloadCsv()">CSV出力</button>
+      </div>
+    </section>
+  </div>
+  <section class="panel">
+    <h2>勤怠一覧</h2>
+    <div class="table-wrap"><table><thead><tr><th>日付</th><th>ユーザー</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>状態</th><th>備考</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const OEM_CONFIG={brandName:'SAKURA SYSTEM',demoBannerText:'DEMO版 - この画面はデモです。本番データではありません。'};
+firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+const db=firebase.firestore();
+if(location.hostname==='localhost'||location.hostname==='127.0.0.1')db.useEmulator('127.0.0.1',8080);
+const TS=firebase.firestore.Timestamp,FV=firebase.firestore.FieldValue;
+let currentUser=null,currentProfile=null,roleUsers={},records=[];
+const fallbackRoles={
+  'demo@sakura-demo.jp':{display_name:'佐藤 太郎',role:'admin',employee_no:'EMP001'},
+  'oem@sakura-demo.jp':{display_name:'田中 花子',role:'user',employee_no:'EMP002'},
+  'agent@sakura-demo.jp':{display_name:'山田 翔太',role:'part',employee_no:'EMP003'}
+};
+function pad(v){return String(v).padStart(2,'0')}function today(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}function nowTime(){const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`}function currentMonth(){return today().slice(0,7)}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}function show(m){toast.textContent=m;toast.classList.add('show');clearTimeout(show.t);show.t=setTimeout(()=>toast.classList.remove('show'),2600)}function docId(email,date){return `${email.replace(/[^a-zA-Z0-9_-]/g,'_')}_${date}`}function isAdmin(){return currentProfile?.role==='admin'}function minOf(t){if(!t)return 0;const [h,m]=t.split(':').map(Number);return h*60+m}function fmtMin(n){n=Math.max(0,Math.round(n||0));const h=Math.floor(n/60),m=n%60;return h?`${h}時間${m}分`:`${m}分`}function breakMinutes(b){return (b||[]).reduce((s,x)=>s+(x.start&&x.end?Math.max(0,minOf(x.end)-minOf(x.start)):0),0)}function workMinutes(r){return r.clock_in&&r.clock_out?Math.max(0,minOf(r.clock_out)-minOf(r.clock_in)-breakMinutes(r.breaks)):0}
+function updateClock(){const d=new Date();clockNow.textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}`;dateLine.textContent=d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});}setInterval(updateClock,1000);updateClock();
+firebase.auth().onAuthStateChanged(async user=>{if(!user){location.href='index.html';return}currentUser=user;try{const session=await db.collection('demo_sessions').doc(user.uid).get();const sd=session.data();if(!session.exists||!sd.active||sd.disabled||sd.expiresAt.toDate()<new Date()){await firebase.auth().signOut();location.href='index.html';return}await loadRoles();currentProfile=roleUsers[user.email]||fallbackRoles[user.email]||{display_name:user.email,role:sd.role==='demo_admin'?'admin':'user',employee_no:''};userLine.textContent=`${currentProfile.display_name} / ${user.email} / ${currentProfile.role}`;reportLink.style.display=isAdmin()?'inline-flex':'none';monthPicker.value=currentMonth();setupUserFilter();await loadAll();}catch(e){console.error(e);show('認証確認に失敗しました');}});
+async function loadRoles(){roleUsers={...fallbackRoles};const snap=await db.collection('demo_timecard_config').doc('roles').get().catch(()=>null);if(snap&&snap.exists&&snap.data().users)roleUsers={...roleUsers,...snap.data().users};}
+function setupUserFilter(){if(!isAdmin())return;userFilterWrap.style.display='block';userFilter.innerHTML='<option value="">全員</option>'+Object.keys(roleUsers).map(email=>`<option value="${esc(email)}">${esc(roleUsers[email].display_name)} / ${esc(email)}</option>`).join('');}
+async function getTodayRecord(){const id=docId(currentUser.email,today());const ref=db.collection('demo_timecards').doc(id);const snap=await ref.get();return {ref,data:snap.exists?snap.data():null,id};}
+async function punch(type){try{const {ref,data}=await getTodayRecord();const base=data||{isDemo:true,user_id:currentUser.email,user_uid:currentUser.uid,user_name:currentProfile.display_name,user_role:currentProfile.role,date:today(),breaks:[],approval_status:'未申請',note:'',manager_note:'',createdAt:TS.now(),createdBy:currentUser.uid};const t=nowTime();if(type==='clock_in'){if(base.clock_in)return show('出勤済みです');base.clock_in=t}else if(type==='break_start'){const last=base.breaks[base.breaks.length-1];if(last&&!last.end)return show('休憩終了を先に押してください');base.breaks.push({start:t,end:''})}else if(type==='break_end'){const last=base.breaks[base.breaks.length-1];if(!last||last.end)return show('休憩開始がありません');last.end=t}else if(type==='clock_out'){if(!base.clock_in)return show('先に出勤してください');base.clock_out=t}base.updatedAt=TS.now();base.updatedBy=currentUser.uid;await ref.set(base,{merge:true});show('保存しました');await loadAll();}catch(e){console.error(e);show('保存に失敗しました');}}
+async function loadAll(){if(!currentUser)return;const month=monthPicker.value||currentMonth();let snap=await db.collection('demo_timecards').get();records=[];snap.forEach(d=>{const r={id:d.id,...d.data()};if((r.date||'').startsWith(month)&&(isAdmin()||r.user_id===currentUser.email)&&(!userFilter.value||r.user_id===userFilter.value))records.push(r)});records.sort((a,b)=>(b.date+a.user_id).localeCompare(a.date+b.user_id));renderToday();renderRows();}
+function renderToday(){const r=records.find(x=>x.date===today()&&x.user_id===currentUser.email)||{};mIn.textContent=r.clock_in||'--';mOut.textContent=r.clock_out||'--';mBreak.textContent=fmtMin(breakMinutes(r.breaks));mWork.textContent=fmtMin(workMinutes(r));}
+function statusPill(s){const cls=s==='承認済み'?'ok':s==='差戻し'?'bad':s==='申請中'?'warn':'';return `<span class="pill ${cls}">${esc(s||'未申請')}</span>`}
+function renderRows(){rows.innerHTML=records.map(r=>`<tr><td data-label="日付">${esc(r.date)}</td><td data-label="ユーザー">${esc(r.user_name)}<br><span class="muted">${esc(r.user_id)}</span></td><td data-label="出勤">${esc(r.clock_in||'--')}</td><td data-label="退勤">${esc(r.clock_out||'--')}</td><td data-label="休憩">${fmtMin(breakMinutes(r.breaks))}</td><td data-label="実働">${fmtMin(workMinutes(r))}</td><td data-label="状態">${statusPill(r.approval_status)}</td><td data-label="備考">${esc(r.note||r.manager_note||'')}</td><td data-label="操作">${actions(r)}</td></tr>`).join('')||'<tr><td colspan="9">勤怠データはありません。</td></tr>'}
+function actions(r){if(isAdmin())return `<button onclick="adminEdit('${esc(r.id)}')">修正</button> <button onclick="setStatus('${esc(r.id)}','承認済み')">承認</button> <button class="danger" onclick="setStatus('${esc(r.id)}','差戻し')">差戻し</button>`;return r.user_id===currentUser.email&&r.approval_status!=='承認済み'?`<button onclick="setStatus('${esc(r.id)}','申請中')">上長へ申請</button>`:''}
+async function setStatus(id,status){const note=status==='差戻し'?prompt('管理メモ','修正してください')||'修正してください':'';await db.collection('demo_timecards').doc(id).update({approval_status:status,manager_note:note,updatedAt:TS.now(),updatedBy:currentUser.uid});show('状態を更新しました');loadAll();}
+async function adminEdit(id){if(!isAdmin())return;const r=records.find(x=>x.id===id);if(!r)return;const cin=prompt('出勤時刻',r.clock_in||'')??r.clock_in;const cout=prompt('退勤時刻',r.clock_out||'')??r.clock_out;await db.collection('demo_timecards').doc(id).update({clock_in:cin,clock_out:cout,updatedAt:TS.now(),updatedBy:currentUser.uid});show('勤怠を修正しました');loadAll();}
+function downloadCsv(){const header=['date','user','clock_in','clock_out','break_minutes','work_minutes','status'];const lines=[header.join(',')].concat(records.map(r=>[r.date,r.user_name,r.clock_in||'',r.clock_out||'',breakMinutes(r.breaks),workMinutes(r),r.approval_status||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')));const blob=new Blob([`\ufeff${lines.join('\n')}`],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`demo_timecards_${monthPicker.value||currentMonth()}.csv`;a.click();URL.revokeObjectURL(a.href);}
+monthPicker.addEventListener('change',loadAll);userFilter.addEventListener('change',loadAll);
+</script>
+</body>
+</html>

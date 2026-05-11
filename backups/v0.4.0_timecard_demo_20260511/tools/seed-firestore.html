@@ -158,45 +158,6 @@ async function runSeed() {
       addLog(`✓ ${e.title}`, 'ok');
     }
 
-    // v0.4.0: 勤怠管理Demoシードデータ
-    addLog('\n--- 勤怠管理Demo ---');
-    const timecardUsers = {
-      'demo@sakura-demo.jp':  { display_name:'佐藤 太郎', role:'admin', employee_no:'EMP001', department:'管理部' },
-      'oem@sakura-demo.jp':   { display_name:'田中 花子', role:'user',  employee_no:'EMP002', department:'営業部' },
-      'agent@sakura-demo.jp': { display_name:'山田 翔太', role:'part',  employee_no:'EMP003', department:'サポート' }
-    };
-    await db.collection('demo_timecard_config').doc('roles').set({ isDemo:true, users:timecardUsers, updatedAt:now, updatedBy:uid });
-    const tcId = (email, date) => email.replace(/[^a-zA-Z0-9_-]/g,'_') + '_' + date;
-    const baseRecord = (email, date, clockIn, clockOut, breaks, status, note) => ({
-      isDemo:true, user_id:email, user_uid:'', user_name:timecardUsers[email].display_name,
-      user_role:timecardUsers[email].role, date, clock_in:clockIn, clock_out:clockOut,
-      breaks, approval_status:status || '未申請', note:note || '', manager_note:'',
-      createdAt:now, createdBy:uid, updatedAt:now, updatedBy:uid
-    });
-    const workDays = ['2026-05-01','2026-05-04','2026-05-05','2026-05-07','2026-05-08','2026-05-09'];
-    for (const email of Object.keys(timecardUsers)) {
-      for (const date of workDays) {
-        const out = email === 'demo@sakura-demo.jp' && date === '2026-05-07' ? '21:00' : '18:00';
-        const breaks = email === 'oem@sakura-demo.jp' && date === '2026-05-05'
-          ? [{start:'12:00',end:'13:00'},{start:'15:30',end:'15:45'}]
-          : [{start:'12:00',end:'13:00'}];
-        const record = baseRecord(email, date, '09:00', out, breaks, date === '2026-05-09' ? '申請中' : '承認済み', '');
-        if (email === 'agent@sakura-demo.jp' && date === '2026-05-08') record.clock_out = '';
-        await db.collection('demo_timecards').doc(tcId(email,date)).set(record);
-      }
-    }
-    await db.collection('demo_timecard_applications').doc('app_oem_paid_20260506').set({ isDemo:true,user_id:'oem@sakura-demo.jp',user_uid:'',user_name:'田中 花子',user_role:'user',type:'有給',date:'2026-05-06',start:'',end:'',days:1,reason:'私用のため',status:'承認済み',manager_note:'',createdAt:now,createdBy:uid,updatedAt:now,updatedBy:uid });
-    await db.collection('demo_timecard_applications').doc('app_agent_leave_20260503').set({ isDemo:true,user_id:'agent@sakura-demo.jp',user_uid:'',user_name:'山田 翔太',user_role:'part',type:'休暇',date:'2026-05-03',start:'',end:'',days:1,reason:'家庭都合のため',status:'申請中',manager_note:'',createdAt:now,createdBy:uid,updatedAt:now,updatedBy:uid });
-    await db.collection('demo_timecard_applications').doc('app_oem_fix_20260502').set({ isDemo:true,user_id:'oem@sakura-demo.jp',user_uid:'',user_name:'田中 花子',user_role:'user',type:'打刻修正',date:'2026-05-02',start:'09:00',end:'18:00',days:0,reason:'退勤打刻忘れ',status:'差戻し',manager_note:'証跡を追記してください',createdAt:now,createdBy:uid,updatedAt:now,updatedBy:uid });
-    for (const email of Object.keys(timecardUsers)) {
-      await db.collection('demo_timecard_leave_balances').doc(email.replace(/[^a-zA-Z0-9_-]/g,'_')).set({ isDemo:true,user_id:email,user_name:timecardUsers[email].display_name,grant_days:10,used_days:email==='oem@sakura-demo.jp'?1:0,expires_on:'2027-03-31',updatedAt:now,updatedBy:uid });
-      for (const d of ['2026-05-12','2026-05-13','2026-05-14','2026-05-15','2026-05-16']) {
-        await db.collection('demo_timecard_shifts').doc(tcId(email,d)).set({ isDemo:true,user_id:email,user_uid:'',user_name:timecardUsers[email].display_name,user_role:timecardUsers[email].role,date:d,shift_type:'work',start:'09:00',end:'18:00',break_minutes:60,note:'Demoシフト',archived:false,createdAt:now,createdBy:uid,updatedAt:now,updatedBy:uid });
-      }
-    }
-    await db.collection('demo_timecard_shift_requests').doc('shiftreq_agent_20260512').set({ isDemo:true,user_id:'agent@sakura-demo.jp',user_uid:'',user_name:'山田 翔太',user_role:'part',date:'2026-05-12',shift_type:'work',start:'10:00',end:'17:00',break_minutes:45,note:'勤務希望',status:'申請中',createdAt:now,createdBy:uid,updatedAt:now,updatedBy:uid });
-    addLog('✓ 勤怠管理Demoデータ', 'ok');
-
     addLog('\n✅ 全データの投入が完了しました！', 'ok');
     addLog('このページを閉じてデモ環境をご利用ください。');
 

@@ -248,52 +248,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // demo timecard collections
-    match /demo_timecard_config/{docId} {
-      allow read:  if isDemoUser();
-      allow write: if isDemoUser();
-    }
-
-    match /demo_timecards/{docId} {
-      allow read:   if isDemoUser();
-      allow create: if isDemoUser() && hasIsDemo();
-      allow update: if isDemoUser() && hasIsDemo()
-                     && request.resource.data.isDemo == resource.data.isDemo;
-      allow delete: if false;
-    }
-
-    match /demo_timecard_shifts/{docId} {
-      allow read:   if isDemoUser();
-      allow create: if isDemoUser() && hasIsDemo();
-      allow update: if isDemoUser() && hasIsDemo()
-                     && request.resource.data.isDemo == resource.data.isDemo;
-      allow delete: if false;
-    }
-
-    match /demo_timecard_shift_requests/{docId} {
-      allow read:   if isDemoUser();
-      allow create: if isDemoUser() && hasIsDemo();
-      allow update: if isDemoUser() && hasIsDemo()
-                     && request.resource.data.isDemo == resource.data.isDemo;
-      allow delete: if false;
-    }
-
-    match /demo_timecard_applications/{docId} {
-      allow read:   if isDemoUser();
-      allow create: if isDemoUser() && hasIsDemo();
-      allow update: if isDemoUser() && hasIsDemo()
-                     && request.resource.data.isDemo == resource.data.isDemo;
-      allow delete: if false;
-    }
-
-    match /demo_timecard_leave_balances/{docId} {
-      allow read:   if isDemoUser();
-      allow create: if isDemoUser() && hasIsDemo();
-      allow update: if isDemoUser() && hasIsDemo()
-                     && request.resource.data.isDemo == resource.data.isDemo;
-      allow delete: if false;
-    }
-
     // ─── 全拒否（フォールバック）─────────────────────────────
     match /{document=**} {
       allow read, write: if false;

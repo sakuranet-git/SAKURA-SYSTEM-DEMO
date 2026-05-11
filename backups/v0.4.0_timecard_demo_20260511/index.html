@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAKURA SYSTEM デモ環境</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<!-- DEMO設定（gitignore済み・サーバーに別途アップロード） -->
+<script src="firebase-config.demo.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    background: #f6f5f4;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: rgba(0,0,0,0.95);
+  }
+
+  .demo-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #d32f2f;
+    color: #fff;
+    text-align: center;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 1000;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: rgba(0,0,0,0.04) 0px 4px 18px, rgba(0,0,0,0.027) 0px 2px 7px, rgba(0,0,0,0.02) 0px 0.8px 2.9px;
+    padding: 48px;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 34px;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .logo .brand {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: rgba(0,0,0,0.95);
+  }
+
+  .logo .badge {
+    display: inline-block;
+    background: #f2f9ff;
+    color: #097fe8;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .logo .sub {
+    font-size: 14px;
+    color: #615d59;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(0,0,0,0.1);
+    margin: 24px 0;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #615d59;
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+  }
+
+  input[type="text"], input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 6px;
+    font-size: 15px;
+    font-family: inherit;
+    color: rgba(0,0,0,0.95);
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+    outline: none;
+    border-color: #0075de;
+    box-shadow: 0 0 0 2px rgba(0,117,222,0.12);
+  }
+
+  .terms-box {
+    background: #f6f5f4;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    padding: 14px;
+    margin: 16px 0;
+    font-size: 12px;
+    color: #615d59;
+    max-height: 140px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+
+  .agree-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .agree-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #0075de;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #0075de;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.15s;
+  }
+
+  .btn-primary:hover:not(:disabled) { background: #005bab; }
+  .btn-primary:disabled { background: #a39e98; cursor: not-allowed; }
+
+  .error-msg {
+    display: none;
+    background: #fff5f0;
+    border: 1px solid #dd5b00;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #dd5b00;
+    margin-top: 12px;
+  }
+
+  .loading-msg {
+    display: none;
+    text-align: center;
+    font-size: 13px;
+    color: #615d59;
+    margin-top: 12px;
+  }
+
+  .feature-list {
+    list-style: none;
+    margin-top: 24px;
+    padding: 0;
+  }
+
+  .feature-list li {
+    font-size: 13px;
+    color: #615d59;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .feature-list li::before {
+    content: "✓";
+    color: #1aae39;
+    font-weight: 700;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: #a39e98;
+    margin-top: 20px;
+  }
+
+  .manual-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: #f2f9ff;
+    border: 1px solid rgba(0,117,222,0.18);
+    border-radius: 8px;
+    text-decoration: none;
+    color: rgba(0,0,0,0.95);
+    transition: all 0.15s;
+  }
+
+  .manual-link:hover {
+    background: #e7f3ff;
+    border-color: #0075de;
+    transform: translateY(-1px);
+  }
+
+  .manual-link-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .manual-link-content { flex: 1; }
+
+  .manual-link-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(0,0,0,0.95);
+  }
+
+  .manual-link-desc {
+    font-size: 12px;
+    color: #615d59;
+    margin-top: 2px;
+  }
+
+  .manual-link-arrow {
+    color: #0075de;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  @media (max-width: 520px) {
+    .card { padding: 28px 20px; }
+    .logo .brand { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">⚠️ これはデモ環境です — 実際の顧客データは含まれていません</div>
+
+<div class="card">
+  <div class="logo">
+    <div class="brand">🌸 SAKURA SYSTEM</div>
+    <div class="badge">DEMO</div>
+    <p class="sub">OEM・代理店パートナー向けデモ環境<br>実際の運用画面をそのまま体験いただけます</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <label for="demoEmail">メールアドレス</label>
+    <input type="email" id="demoEmail" placeholder="例: demo@example.com" maxlength="100" autocomplete="email">
+  </div>
+
+  <div style="margin-top: 16px;">
+    <label for="demoPassword">パスワード</label>
+    <input type="password" id="demoPassword" placeholder="パスワードを入力" maxlength="100" autocomplete="current-password">
+  </div>
+
+  <div style="margin-top: 20px;">
+    <label>デモ利用規約</label>
+    <div class="terms-box">
+      <strong>SAKURA SYSTEM デモ環境 利用規約</strong><br><br>
+      1. 本デモ環境は、SAKURA NETの OEM・代理店パートナー候補の方向けに提供されます。<br>
+      2. 本デモ環境で取り扱うデータは架空のものです。実在の個人・企業とは一切関係ありません。<br>
+      3. デモ環境は本番環境と完全に分離されており、入力したデータが本番環境に影響を与えることはありません。<br>
+      4. ログイン情報は第三者に共有しないでください。<br>
+      5. 取得したスクリーンショット・情報の外部公開は禁止します。<br>
+      6. デモデータは定期的に自動リセットされます。<br>
+      7. 本デモ環境の利用は評価目的に限ります。
+    </div>
+    <label class="agree-row">
+      <input type="checkbox" id="agreeCheck">
+      <span>上記の利用規約に同意します</span>
+    </label>
+  </div>
+
+  <button class="btn-primary" id="startBtn" disabled onclick="startDemo()">デモを開始する</button>
+
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="loading-msg" id="loadingMsg">ログイン中...</div>
+
+  <ul class="feature-list">
+    <li>顧客管理システム（架空データ入り）</li>
+    <li>請求書システム（PDF出力・DEMO透かし）</li>
+    <li>データは本番環境と完全分離</li>
+  </ul>
+
+  <a href="manual-user.html" target="_blank" class="manual-link">
+    <div class="manual-link-icon">📖</div>
+    <div class="manual-link-content">
+      <div class="manual-link-title">はじめての方へ</div>
+      <div class="manual-link-desc">使い方ガイドを見る</div>
+    </div>
+    <div class="manual-link-arrow">→</div>
+  </a>
+</div>
+
+<p class="footer-note">© SAKURA NET | デモ環境 — 顧客情報の入力はお控えください</p>
+
+<script>
+  const agreeCheck = document.getElementById('agreeCheck');
+  const demoEmail  = document.getElementById('demoEmail');
+  const demoPass   = document.getElementById('demoPassword');
+  const startBtn   = document.getElementById('startBtn');
+  const errorMsg   = document.getElementById('errorMsg');
+  const loadingMsg = document.getElementById('loadingMsg');
+
+  // Firebase 初期化
+  if (!firebase.apps.length) firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+  const db = firebase.firestore();
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    db.useEmulator('127.0.0.1', 8080);
+  }
+
+  function updateBtn() {
+    startBtn.disabled = !(agreeCheck.checked && demoEmail.value.trim().length > 0 && demoPass.value.length > 0);
+  }
+  agreeCheck.addEventListener('change', updateBtn);
+  demoEmail.addEventListener('input', updateBtn);
+  demoPass.addEventListener('input', updateBtn);
+  demoPass.addEventListener('keydown', e => { if (e.key === 'Enter' && !startBtn.disabled) startDemo(); });
+
+  // 既にサインイン済みなら demo_sessions を確認してリダイレクト
+  firebase.auth().onAuthStateChanged(async function(user) {
+    if (!user) return;
+    try {
+      const snap = await db.collection('demo_sessions').doc(user.uid).get();
+      const d = snap.data();
+      if (snap.exists && d.active && !d.disabled && d.expiresAt.toDate() > new Date()) {
+        window.location.href = 'ordersystem.html';
+      }
+    } catch(e) {}
+  });
+
+  // G-2: 緊急停止チェック
+  document.addEventListener('DOMContentLoaded', () => {
+    db.collection('demo_config').doc('emergency_stop').get().then(snap => {
+      if (snap.exists && snap.data().enabled) {
+        const reason = snap.data().reason || 'メンテナンス中です。';
+        document.querySelector('.card').innerHTML = `<div style="text-align:center;padding:20px;"><h2 style="color:#d32f2f;">⛔ デモ環境停止中</h2><p style="margin-top:12px;color:#615d59;">${reason}</p></div>`;
+      }
+    }).catch(() => {});
+  });
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+    loadingMsg.style.display = 'none';
+    startBtn.disabled = false;
+  }
+
+  async function startDemo() {
+    const email = demoEmail.value.trim();
+    const pass  = demoPass.value;
+    if (!email || !pass || !agreeCheck.checked) return;
+
+    startBtn.disabled = true;
+    errorMsg.style.display = 'none';
+    loadingMsg.style.display = 'block';
+
+    try {
+      // Email/Password サインイン
+      const cred = await firebase.auth().signInWithEmailAndPassword(email, pass);
+      const uid  = cred.user.uid;
+
+      // demo_sessions セッション検証
+      const snap = await db.collection('demo_sessions').doc(uid).get();
+      if (!snap.exists) {
+        await firebase.auth().signOut();
+        showError('アカウントが見つかりません。管理者にお問い合わせください。');
+        return;
+      }
+      const session = snap.data();
+      if (!session.active || session.disabled) {
+        await firebase.auth().signOut();
+        showError('このアカウントは無効化されています。');
+        return;
+      }
+      if (session.expiresAt.toDate() < new Date()) {
+        await firebase.auth().signOut();
+        showError('デモ期間が終了しています。管理者にお問い合わせください。');
+        return;
+      }
+
+      window.location.href = 'ordersystem.html';
+
+    } catch (e) {
+      console.error(e);
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        showError('メールアドレスまたはパスワードが違います。');
+      } else {
+        showError('接続エラーが発生しました。しばらくしてから再試行してください。');
+      }
+    }
+  }
+</script>
+</body>
+</html>
