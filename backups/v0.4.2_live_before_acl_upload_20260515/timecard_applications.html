@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>届出・有給管理 Demo | SAKURA SYSTEM</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-config.demo.js"></script>
+<style>
+:root{--brand:#0075de;--accent:#c82054;--bg:#f6f5f4;--panel:#fff;--text:#202124;--muted:#615d59;--line:rgba(0,0,0,.1);--ok:#16833a;--warn:#9a6400;--danger:#c62828;--shadow:rgba(31,35,40,.07) 0 12px 32px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,"Noto Sans JP",system-ui,sans-serif;font-size:16px}.demo-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:#d32f2f;color:#fff;text-align:center;padding:7px 12px;font-weight:800;font-size:13px}.shell{width:min(1240px,calc(100% - 32px));margin:0 auto;padding:56px 0 48px}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.eyebrow{color:var(--brand);font-size:12px;font-weight:900;letter-spacing:.08em}h1{margin:4px 0 0;font-size:34px}h2{margin:0 0 14px;font-size:21px}.nav{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.button,button{min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:9px 13px;text-decoration:none;font:inherit;font-weight:800;cursor:pointer}.primary{background:var(--brand);border-color:var(--brand);color:#fff}.danger{color:var(--danger)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.wide{grid-column:1/-1}label{display:block;color:var(--muted);font-size:13px;font-weight:800;margin-bottom:4px}input,select,textarea{width:100%;min-height:42px;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font:inherit;background:#fff}textarea{min-height:82px;resize:vertical}.table-wrap{overflow-x:auto}table{width:100%;min-width:980px;border-collapse:collapse}th,td{padding:12px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f8fafc;color:var(--muted);font-size:13px}.pill{display:inline-flex;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:900;background:#eaf4ff;color:#005fb8}.pill.ok{background:#eaf7ee;color:var(--ok)}.pill.warn{background:#fff7e6;color:var(--warn)}.pill.bad{background:#fff0f4;color:var(--danger)}.muted{color:var(--muted)}.toast{position:fixed;right:18px;bottom:18px;background:#111;color:#fff;border-radius:8px;padding:12px 14px;opacity:0;transform:translateY(8px);transition:.18s;z-index:9999}.toast.show{opacity:1;transform:translateY(0)}@media(max-width:860px){body{font-size:15px}.shell{width:min(100% - 24px,680px);padding-top:58px}.topbar{flex-direction:column}.nav,.nav .button{width:100%}h1{font-size:28px}.grid{grid-template-columns:1fr}table,tbody,tr,td{display:block;width:100%}table{min-width:0}thead{display:none}.table-wrap{overflow:visible}tr{border:1px solid var(--line);border-radius:12px;margin-top:12px;padding:12px 14px;background:#fff}td{display:grid;grid-template-columns:116px minmax(0,1fr);gap:10px;padding:9px 0}td:before{content:attr(data-label);color:var(--muted);font-size:13px;font-weight:800}}
+</style>
+</head>
+<body>
+<div class="demo-banner">DEMO版 - この画面はデモです。本番データではありません。</div>
+<main class="shell">
+  <div class="topbar">
+    <div><div class="eyebrow">SAKURA SYSTEM DEMO</div><h1>届出申請・有給管理</h1><p class="muted" id="userLine">認証確認中...</p></div>
+    <div class="nav"><a class="button" href="timecard.html">タイムカード</a><a class="button" href="timecard_shift.html">シフト</a><a class="button" href="timecard_report.html" id="reportLink" style="display:none">レポート</a><a class="button" href="timecard_guide.html">使い方</a></div>
+  </div>
+  <section class="panel">
+    <h2>届出申請</h2>
+    <form id="applicationForm" class="grid">
+      <div><label>種別</label><select id="appType"><option>有給</option><option>休暇</option><option>残業</option><option>打刻修正</option><option>休日出勤</option><option>振替休日</option></select></div>
+      <div><label>対象日</label><input type="date" id="appDate"></div>
+      <div><label>開始</label><input type="time" id="appStart"></div>
+      <div><label>終了</label><input type="time" id="appEnd"></div>
+      <div><label>日数</label><input type="number" id="appDays" value="1" step="0.5" min="0"></div>
+      <div class="wide"><label>理由・補足</label><textarea id="appReason" placeholder="例: 私用のため、退勤打刻忘れのため"></textarea></div>
+      <div><button class="primary" type="submit">申請する</button></div>
+    </form>
+  </section>
+  <section class="panel" id="grantPanel" style="display:none">
+    <h2>有給付与</h2>
+    <form id="grantForm" class="grid">
+      <div><label>ユーザー</label><select id="grantUser"></select></div>
+      <div><label>付与日数</label><input type="number" id="grantDays" value="10" step="0.5" min="0"></div>
+      <div><label>期限</label><input type="date" id="grantExpires"></div>
+      <div><button class="primary" type="submit">付与する</button></div>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>有給残数</h2>
+    <div class="table-wrap"><table><thead><tr><th>ユーザー</th><th>付与</th><th>使用予定</th><th>残数</th><th>期限</th></tr></thead><tbody id="leaveRows"></tbody></table></div>
+  </section>
+  <section class="panel">
+    <h2>申請一覧</h2>
+    <div class="table-wrap"><table><thead><tr><th>対象日</th><th>ユーザー</th><th>種別</th><th>時間/日数</th><th>理由</th><th>状態</th><th>操作</th></tr></thead><tbody id="appRows"></tbody></table></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+firebase.initializeApp(DEMO_FIREBASE_CONFIG);const db=firebase.firestore();if(location.hostname==='localhost'||location.hostname==='127.0.0.1')db.useEmulator('127.0.0.1',8080);const TS=firebase.firestore.Timestamp;let currentUser=null,profile=null,roleUsers={},apps=[],leaves=[];const fallbackRoles={'demo@sakura-demo.jp':{display_name:'佐藤 太郎',role:'admin',employee_no:'EMP001'},'oem@sakura-demo.jp':{display_name:'田中 花子',role:'user',employee_no:'EMP002'},'agent@sakura-demo.jp':{display_name:'山田 翔太',role:'part',employee_no:'EMP003'}};function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}function show(m){toast.textContent=m;toast.classList.add('show');clearTimeout(show.t);show.t=setTimeout(()=>toast.classList.remove('show'),2600)}function isAdmin(){return profile?.role==='admin'}function makeId(prefix,email,date){return `${prefix}_${email.replace(/[^a-zA-Z0-9_-]/g,'_')}_${date}_${Date.now()}`}function statusClass(s){return s==='承認済み'?'ok':s==='差戻し'?'bad':'warn'}
+firebase.auth().onAuthStateChanged(async user=>{if(!user){location.href='index.html';return}currentUser=user;const ss=await db.collection('demo_sessions').doc(user.uid).get();const sd=ss.data();if(!ss.exists||!sd.active||sd.disabled||sd.expiresAt.toDate()<new Date()){await firebase.auth().signOut();location.href='index.html';return}const cfg=await db.collection('demo_timecard_config').doc('roles').get().catch(()=>null);roleUsers={...fallbackRoles,...((cfg&&cfg.exists&&cfg.data().users)||{})};profile=roleUsers[user.email]||{display_name:user.email,role:'user'};userLine.textContent=`${profile.display_name} / ${user.email} / ${profile.role}`;reportLink.style.display=isAdmin()?'inline-flex':'none';grantPanel.style.display=isAdmin()?'block':'none';grantUser.innerHTML=Object.keys(roleUsers).map(e=>`<option value="${esc(e)}">${esc(roleUsers[e].display_name)} / ${esc(e)}</option>`).join('');loadAll();});
+applicationForm.addEventListener('submit',async e=>{e.preventDefault();const data={isDemo:true,user_id:currentUser.email,user_uid:currentUser.uid,user_name:profile.display_name,user_role:profile.role,type:appType.value,date:appDate.value,start:appStart.value,end:appEnd.value,days:Number(appDays.value||0),reason:appReason.value,status:'申請中',manager_note:'',createdAt:TS.now(),createdBy:currentUser.uid,updatedAt:TS.now(),updatedBy:currentUser.uid};if(!data.date)return show('対象日を入力してください');await db.collection('demo_timecard_applications').doc(makeId('app',currentUser.email,data.date)).set(data);show('申請しました');applicationForm.reset();appDays.value='1';loadAll();});
+grantForm.addEventListener('submit',async e=>{e.preventDefault();if(!isAdmin())return;const email=grantUser.value;const u=roleUsers[email]||{display_name:email,role:'user'};const data={isDemo:true,user_id:email,user_name:u.display_name,grant_days:Number(grantDays.value||0),used_days:0,expires_on:grantExpires.value,updatedAt:TS.now(),updatedBy:currentUser.uid};await db.collection('demo_timecard_leave_balances').doc(email.replace(/[^a-zA-Z0-9_-]/g,'_')).set(data,{merge:true});show('有給を付与しました');loadAll();});
+async function loadAll(){apps=[];leaves=[];let a=await db.collection('demo_timecard_applications').get();a.forEach(d=>{const r={id:d.id,...d.data()};if(isAdmin()||r.user_id===currentUser.email)apps.push(r)});let l=await db.collection('demo_timecard_leave_balances').get();l.forEach(d=>{const r={id:d.id,...d.data()};if(isAdmin()||r.user_id===currentUser.email)leaves.push(r)});apps.sort((x,y)=>(y.date||'').localeCompare(x.date||''));render();}
+function render(){leaveRows.innerHTML=leaves.map(l=>{const pending=apps.filter(a=>a.user_id===l.user_id&&a.type==='有給'&&a.status!=='差戻し').reduce((s,a)=>s+Number(a.days||0),0);const left=Number(l.grant_days||0)-Number(l.used_days||0)-pending;return `<tr><td data-label="ユーザー">${esc(l.user_name)}<br><span class="muted">${esc(l.user_id)}</span></td><td data-label="付与">${esc(l.grant_days||0)}日</td><td data-label="使用予定">${pending}日</td><td data-label="残数">${left}日</td><td data-label="期限">${esc(l.expires_on||'--')}</td></tr>`}).join('')||'<tr><td colspan="5">有給残数はありません。</td></tr>';appRows.innerHTML=apps.map(a=>`<tr><td data-label="対象日">${esc(a.date)}</td><td data-label="ユーザー">${esc(a.user_name)}</td><td data-label="種別"><span class="pill">${esc(a.type)}</span></td><td data-label="時間/日数">${esc(a.start||'--')} - ${esc(a.end||'--')} / ${esc(a.days||0)}日</td><td data-label="理由">${esc(a.reason||a.manager_note||'')}</td><td data-label="状態"><span class="pill ${statusClass(a.status)}">${esc(a.status)}</span></td><td data-label="操作">${isAdmin()&&a.status==='申請中'?`<button onclick="approveApp('${esc(a.id)}')">承認</button> <button class="danger" onclick="rejectApp('${esc(a.id)}')">差戻し</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7">申請はありません。</td></tr>'}
+window.approveApp=async id=>{await db.collection('demo_timecard_applications').doc(id).update({status:'承認済み',updatedAt:TS.now(),updatedBy:currentUser.uid});show('承認しました');loadAll()};window.rejectApp=async id=>{await db.collection('demo_timecard_applications').doc(id).update({status:'差戻し',manager_note:'差戻し',updatedAt:TS.now(),updatedBy:currentUser.uid});show('差戻しました');loadAll()};
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勤怠管理 使い方ガイド Demo | SAKURA SYSTEM</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-config.demo.js"></script>
+<style>
+:root{--brand:#0075de;--accent:#c82054;--bg:#f6f5f4;--panel:#fff;--text:#202124;--muted:#615d59;--line:rgba(0,0,0,.1);--shadow:rgba(31,35,40,.07) 0 12px 32px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,"Noto Sans JP",system-ui,sans-serif;font-size:16px;line-height:1.75}.demo-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:#d32f2f;color:#fff;text-align:center;padding:7px 12px;font-weight:800;font-size:13px}.shell{width:min(1040px,calc(100% - 32px));margin:0 auto;padding:56px 0 48px}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.eyebrow{color:var(--brand);font-size:12px;font-weight:900;letter-spacing:.08em}h1{margin:4px 0 0;font-size:34px;line-height:1.25}h2{margin:0 0 12px;font-size:22px}h3{margin:18px 0 6px;font-size:17px}.nav{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.button{min-height:42px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:9px 13px;text-decoration:none;font:inherit;font-weight:800;display:inline-flex;align-items:center}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:22px;margin-bottom:18px}.steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.step{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfbfb}.step strong{display:block;margin-bottom:4px}.muted{color:var(--muted)}.pill{display:inline-flex;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:900;background:#eaf4ff;color:#005fb8;margin-right:6px}ul{padding-left:1.4em}li{margin:4px 0}@media(max-width:860px){body{font-size:15px}.shell{width:min(100% - 24px,680px);padding-top:58px}.topbar{flex-direction:column}.nav,.nav .button{width:100%}h1{font-size:28px}.steps{grid-template-columns:1fr}.panel{padding:18px}}
+</style>
+</head>
+<body>
+<div class="demo-banner">DEMO版 - この画面はデモです。本番データではありません。</div>
+<main class="shell">
+  <div class="topbar">
+    <div><div class="eyebrow">SAKURA SYSTEM DEMO</div><h1>勤怠管理 使い方ガイド</h1><p class="muted" id="userLine">Demo専用データで操作できます。</p></div>
+    <div class="nav"><a class="button" href="timecard.html">タイムカード</a><a class="button" href="timecard_shift.html">シフト</a><a class="button" href="timecard_applications.html">届出・有給</a><a class="button" href="timecard_report.html" id="reportLink" style="display:none">レポート</a><a class="button" href="sakura-os.html">SAKURA OS</a></div>
+  </div>
+  <section class="panel">
+    <h2>Demo版について</h2>
+    <p>この勤怠管理はSAKURA SYSTEM Demo専用です。打刻、申請、シフト、レポートはすべてDemo用Firestoreコレクションに保存され、本番の勤怠データには影響しません。</p>
+    <p><span class="pill">管理者</span>全員の勤怠・シフト・申請を確認し、修正・承認できます。<span class="pill">一般</span><span class="pill">アルバイト</span>自分の打刻、申請、シフト作成を行えます。</p>
+  </section>
+  <section class="panel">
+    <h2>基本操作</h2>
+    <div class="steps">
+      <div class="step"><strong>1. 出勤</strong>出社時に「出勤」を押します。今日の勤怠レコードが作成されます。</div>
+      <div class="step"><strong>2. 休憩</strong>休憩は「休憩開始」「休憩終了」を押します。複数回の休憩にも対応しています。</div>
+      <div class="step"><strong>3. 退勤</strong>勤務終了時に「退勤」を押します。実働時間と休憩時間が自動集計されます。</div>
+      <div class="step"><strong>4. 申請</strong>勤怠を上長へ申請し、管理者が承認または差戻しを行います。</div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>シフト管理</h2>
+    <ul>
+      <li>全ユーザーが自分のシフトを新規作成できます。</li>
+      <li>登録済みシフトの修正・アーカイブは管理者のみ可能です。</li>
+      <li>一般ユーザーとアルバイトは希望シフトを申請できます。</li>
+      <li>管理者は申請を承認すると、その内容をシフトに反映できます。</li>
+    </ul>
+  </section>
+  <section class="panel">
+    <h2>届出・有給</h2>
+    <ul>
+      <li>有給、休暇、残業、打刻修正、休日出勤、振替休日を申請できます。</li>
+      <li>有給残数は管理者が付与し、申請中・承認済みの有給予定も残数計算に反映します。</li>
+      <li>申請状態は「申請中」「承認済み」「差戻し」で管理します。</li>
+    </ul>
+  </section>
+  <section class="panel">
+    <h2>管理者向け</h2>
+    <ul>
+      <li>タイムカード画面で全員の勤怠を確認できます。</li>
+      <li>勤怠の修正、承認、差戻しは管理者のみ可能です。</li>
+      <li>レポート画面では残業、有給関連、36協定アラート、給与CSVを確認できます。</li>
+      <li>給与CSVは汎用、弥生給与、PCA給与、給与奉行クラウド、freee人事労務の表示形式を選べます。</li>
+    </ul>
+  </section>
+  <section class="panel">
+    <h2>困ったとき</h2>
+    <h3>退勤を押し忘れた</h3>
+    <p>届出申請で「打刻修正」を選び、対象日と理由を入力してください。管理者が承認・修正します。</p>
+    <h3>休憩を複数回取りたい</h3>
+    <p>休憩ごとに開始と終了を押してください。終了していない休憩がある場合は、次の休憩開始はできません。</p>
+    <h3>画面を戻りたい</h3>
+    <p>各ページ上部のナビゲーションからタイムカード、シフト、届出・有給、SAKURA OSへ戻れます。</p>
+  </section>
+</main>
+<script>
+firebase.initializeApp(DEMO_FIREBASE_CONFIG);const db=firebase.firestore();if(location.hostname==='localhost'||location.hostname==='127.0.0.1')db.useEmulator('127.0.0.1',8080);const fallbackRoles={'demo@sakura-demo.jp':{display_name:'佐藤 太郎',role:'admin'},'oem@sakura-demo.jp':{display_name:'田中 花子',role:'user'},'agent@sakura-demo.jp':{display_name:'山田 翔太',role:'part'}};firebase.auth().onAuthStateChanged(async user=>{if(!user)return;try{const cfg=await db.collection('demo_timecard_config').doc('roles').get().catch(()=>null);const roles={...fallbackRoles,...((cfg&&cfg.exists&&cfg.data().users)||{})};const p=roles[user.email]||{display_name:user.email,role:'user'};userLine.textContent=`ログイン中: ${p.display_name} / ${p.role}`;reportLink.style.display=p.role==='admin'?'inline-flex':'none'}catch(e){}});
+</script>
+</body>
+</html>

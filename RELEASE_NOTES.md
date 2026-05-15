@@ -1,6 +1,13 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 ## v0.4.2 (2026-05-15) - Timecard ACL hardening
 
+### Live Deployment Follow-up
+- Published the hardened Firestore Rules to `sakura-demo-2026`.
+- Updated the live Demo files under `/home/sakura-nets/www/demo` after backing up the previous live files.
+- Corrected the live `demo_sessions` role for `demo@sakura-demo.jp` from `demo_user` to `demo_admin`.
+- Seeded live Demo timecard records, shifts, leave balances, applications, and shift request data.
+- Verified live access control: admin can see all users, while `oem@sakura-demo.jp` can see only its own timecard, shift, and application records.
+
 ### Changed
 - Hardened `demo_timecard_*` Firestore rules so non-admin users can read only documents whose `user_id` matches their login email.
 - Restricted approvals, rejections, leave grants, and registered shift edits to demo admins at the rules layer.
@@ -9,6 +16,7 @@
 
 ### Backup
 - `backups/v0.4.2_timecard_acl_20260515/`
+- `backups/v0.4.2_live_before_acl_upload_20260515/`
 ## v0.4.0 (2026-05-11) — 勤怠管理Demo版追加
 
 ### 追加
