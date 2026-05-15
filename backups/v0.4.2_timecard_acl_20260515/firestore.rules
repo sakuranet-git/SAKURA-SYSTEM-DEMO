@@ -25,22 +25,6 @@ service cloud.firestore {
     function timestampValid(field) {
       return field is timestamp && field <= request.time;
     }
-    function isOwnTimecardResource() {
-      return resource.data.isDemo == true
-          && resource.data.user_id == request.auth.token.email;
-    }
-    function isOwnTimecardRequest() {
-      return request.resource.data.isDemo == true
-          && request.resource.data.user_id == request.auth.token.email;
-    }
-    function keepsTimecardManagerNote() {
-      return request.resource.data.manager_note == resource.data.manager_note;
-    }
-    function ownerTimecardStatusAllowed() {
-      return request.resource.data.approval_status == resource.data.approval_status
-          || (resource.data.approval_status in ['未申請', '差戻し']
-              && request.resource.data.approval_status == '申請中');
-    }
 
     // ─── 既存コレクション（互換 Rules）────────────────────────
 
@@ -335,60 +319,46 @@ service cloud.firestore {
 
     // demo timecard collections
     match /demo_timecard_config/{docId} {
-      allow read:  if isDemoAdmin();
-      allow write: if false;
+      allow read:  if isDemoUser();
+      allow write: if isDemoUser();
     }
 
     match /demo_timecards/{docId} {
-      allow read:   if isDemoAdmin() || (isDemoUser() && isOwnTimecardResource());
-      allow create: if isDemoAdmin() && hasIsDemo()
-                     || (isDemoUser() && isOwnTimecardRequest()
-                         && request.resource.data.user_uid == request.auth.uid
-                         && request.resource.data.approval_status in ['未申請', '申請中']
-                         && request.resource.data.manager_note == '');
-      allow update: if isDemoAdmin() && hasIsDemo()
-                     && request.resource.data.isDemo == resource.data.isDemo
-                  || (isDemoUser() && isOwnTimecardResource() && isOwnTimecardRequest()
-                      && request.resource.data.user_uid == resource.data.user_uid
-                      && request.resource.data.user_id == resource.data.user_id
-                      && request.resource.data.isDemo == resource.data.isDemo
-                      && keepsTimecardManagerNote()
-                      && ownerTimecardStatusAllowed());
+      allow read:   if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo();
+      allow update: if isDemoUser() && hasIsDemo()
+                     && request.resource.data.isDemo == resource.data.isDemo;
       allow delete: if false;
     }
 
     match /demo_timecard_shifts/{docId} {
-      allow read:   if isDemoAdmin() || (isDemoUser() && isOwnTimecardResource());
-      allow create: if isDemoAdmin() && hasIsDemo()
-                     || (isDemoUser() && isOwnTimecardRequest()
-                         && request.resource.data.user_uid == request.auth.uid);
-      allow update: if isDemoAdmin() && hasIsDemo()
+      allow read:   if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo();
+      allow update: if isDemoUser() && hasIsDemo()
                      && request.resource.data.isDemo == resource.data.isDemo;
       allow delete: if false;
     }
 
     match /demo_timecard_shift_requests/{docId} {
-      allow read:   if isDemoAdmin() || (isDemoUser() && isOwnTimecardResource());
-      allow create: if isDemoUser() && isOwnTimecardRequest()
-                     && request.resource.data.user_uid == request.auth.uid;
-      allow update: if isDemoAdmin() && hasIsDemo()
+      allow read:   if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo();
+      allow update: if isDemoUser() && hasIsDemo()
                      && request.resource.data.isDemo == resource.data.isDemo;
       allow delete: if false;
     }
 
     match /demo_timecard_applications/{docId} {
-      allow read:   if isDemoAdmin() || (isDemoUser() && isOwnTimecardResource());
-      allow create: if isDemoUser() && isOwnTimecardRequest()
-                     && request.resource.data.user_uid == request.auth.uid;
-      allow update: if isDemoAdmin() && hasIsDemo()
+      allow read:   if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo();
+      allow update: if isDemoUser() && hasIsDemo()
                      && request.resource.data.isDemo == resource.data.isDemo;
       allow delete: if false;
     }
 
     match /demo_timecard_leave_balances/{docId} {
-      allow read:   if isDemoAdmin() || (isDemoUser() && isOwnTimecardResource());
-      allow create: if isDemoAdmin() && hasIsDemo();
-      allow update: if isDemoAdmin() && hasIsDemo()
+      allow read:   if isDemoUser();
+      allow create: if isDemoUser() && hasIsDemo();
+      allow update: if isDemoUser() && hasIsDemo()
                      && request.resource.data.isDemo == resource.data.isDemo;
       allow delete: if false;
     }

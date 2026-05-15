@@ -1,14 +1,4 @@
 # SAKURA SYSTEM デモ環境 リリースノート
-## v0.4.2 (2026-05-15) - Timecard ACL hardening
-
-### Changed
-- Hardened `demo_timecard_*` Firestore rules so non-admin users can read only documents whose `user_id` matches their login email.
-- Restricted approvals, rejections, leave grants, and registered shift edits to demo admins at the rules layer.
-- Updated timecard, shift, and application pages to query only the current user's records for non-admin users.
-- Limited `demo_timecard_config` reads to admins to avoid exposing the full employee role map.
-
-### Backup
-- `backups/v0.4.2_timecard_acl_20260515/`
 ## v0.4.0 (2026-05-11) — 勤怠管理Demo版追加
 
 ### 追加

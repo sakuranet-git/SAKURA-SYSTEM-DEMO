@@ -70,7 +70,7 @@
   </section>
 </main>
 <script>
-firebase.initializeApp(DEMO_FIREBASE_CONFIG);const db=firebase.firestore();if(location.hostname==='localhost'||location.hostname==='127.0.0.1')db.useEmulator('127.0.0.1',8080);const fallbackRoles={'demo@sakura-demo.jp':{display_name:'佐藤 太郎',role:'admin'},'oem@sakura-demo.jp':{display_name:'田中 花子',role:'user'},'agent@sakura-demo.jp':{display_name:'山田 翔太',role:'part'}};firebase.auth().onAuthStateChanged(async user=>{if(!user)return;let roles={...fallbackRoles};const base=roles[user.email]||{display_name:user.email,role:'user'};if(base.role==='admin'){const cfg=await db.collection('demo_timecard_config').doc('roles').get().catch(()=>null);roles={...roles,...((cfg&&cfg.exists&&cfg.data().users)||{})}}const p=roles[user.email]||base;userLine.textContent=`ログイン中: ${p.display_name} / ${p.role}`;reportLink.style.display=p.role==='admin'?'inline-flex':'none'});
+firebase.initializeApp(DEMO_FIREBASE_CONFIG);const db=firebase.firestore();if(location.hostname==='localhost'||location.hostname==='127.0.0.1')db.useEmulator('127.0.0.1',8080);const fallbackRoles={'demo@sakura-demo.jp':{display_name:'佐藤 太郎',role:'admin'},'oem@sakura-demo.jp':{display_name:'田中 花子',role:'user'},'agent@sakura-demo.jp':{display_name:'山田 翔太',role:'part'}};firebase.auth().onAuthStateChanged(async user=>{if(!user)return;try{const cfg=await db.collection('demo_timecard_config').doc('roles').get().catch(()=>null);const roles={...fallbackRoles,...((cfg&&cfg.exists&&cfg.data().users)||{})};const p=roles[user.email]||{display_name:user.email,role:'user'};userLine.textContent=`ログイン中: ${p.display_name} / ${p.role}`;reportLink.style.display=p.role==='admin'?'inline-flex':'none'}catch(e){}});
 </script>
 </body>
 </html>
