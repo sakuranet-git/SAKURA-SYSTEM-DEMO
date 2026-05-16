@@ -1,5 +1,18 @@
 # SAKURA SYSTEM デモ環境 リリースノート
 
+## v0.4.4 (2026-05-16) - 使い方ガイド更新
+
+### 修正
+- `manual-user.html`: ログイン方法 STEP2 に ID/PASS を直接表示（`demo@sakura-demo.jp` / `Demo2026!`）
+- `manual-user.html`: お問い合わせメールを `ai.sakuranet@gmail.com` → `info@sakuranet-co.jp` に変更
+
+### WinSCP アップロード対象（サーバーパス: `/home/sakura-nets/www/demo/`）
+| ファイル | 変更 |
+|---------|------|
+| `manual-user.html` | STEP2 ID/PASS追加・メール変更 |
+
+---
+
 ## v0.4.3 (2026-05-16) - 名刺管理 cards.html 追加（Phase 2-C）
 
 ### 追加
