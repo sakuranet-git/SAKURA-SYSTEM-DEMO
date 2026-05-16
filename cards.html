@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self';
+    script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline';
+    connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://cdn.jsdelivr.net;
+    img-src 'self' data: blob:;
+    font-src 'self' data:;
+    worker-src blob:;">
+<title>SAKURA CARD 名刺管理 - DEMO</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-config.demo.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+  firebase.initializeApp(DEMO_FIREBASE_CONFIG);
+  const db = firebase.firestore();
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    db.useEmulator('127.0.0.1', 8080);
+  }
+  let currentUser = null;
+  firebase.auth().onAuthStateChanged(async function(user) {
+    if (!user) { window.location.href = 'index.html'; return; }
+    try {
+      const snap = await db.collection('demo_sessions').doc(user.uid).get();
+      const d = snap.data();
+      if (!snap.exists || !d.active || d.disabled || d.expiresAt.toDate() < new Date()) {
+        await firebase.auth().signOut();
+        window.location.href = 'index.html';
+        return;
+      }
+      currentUser = user;
+      initApp();
+    } catch(e) { window.location.href = 'index.html'; }
+  });
+  db.collection('demo_config').doc('emergency_stop').get().then(snap => {
+    if (snap.exists && snap.data().enabled) {
+      const reason = snap.data().reason || 'メンテナンス中です。';
+      document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff5f0;"><div style="text-align:center;padding:40px;"><h1 style="color:#d32f2f;font-size:28px;">⛔ デモ環境停止中</h1><p style="margin-top:16px;color:#615d59;">${reason}</p></div></div>`;
+    }
+  }).catch(() => {});
+</script>
+<style>
+:root {
+  --primary: #0075de;
+  --primary-hover: #005fb5;
+  --text-main: #37352f;
+  --text-secondary: #615d59;
+  --text-muted: #a39e98;
+  --bg: #ffffff;
+  --bg-warm: #f6f5f4;
+  --border: rgba(0,0,0,0.1);
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.02);
+  --radius: 12px;
+  --danger: #dc2626;
+  --warn: #dd5b00;
+  --success: #1aae39;
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, 'Hiragino Sans', 'Meiryo', sans-serif;
+  background: var(--bg-warm);
+  color: var(--text-main);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ── DEMOバナー ── */
+#demo-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
+  background: var(--danger); color: #fff;
+  text-align: center; padding: 5px 12px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+}
+/* ── ナビ ── */
+#main-nav {
+  position: fixed; top: 27px; left: 0; right: 0; z-index: 99998;
+  background: #fff; border-bottom: 1px solid var(--border);
+  padding: 5px 12px; text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;
+}
+.nav-link {
+  display: inline-block; padding: 5px 12px;
+  border-radius: 4px; font-size: 12px; font-weight: 600;
+  background: var(--bg-warm); color: var(--text-secondary);
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.nav-link:hover { background: #eae9e7; }
+.nav-link.active { background: var(--primary); color: #fff; }
+.nav-link.logout { background: #fff5f0; color: var(--warn); border: 1px solid rgba(221,91,0,0.2); }
+.nav-link.logout:hover { background: #ffe8d6; }
+#spacer { height: 68px; }
+
+/* ── レイアウト ── */
+#app { display: none; max-width: 1400px; margin: 0 auto; padding: 24px 20px; }
+#app.loaded { display: block; }
+.page-title { font-size: 22px; font-weight: 700; color: var(--text-main); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.two-col { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ── カード（パネル）── */
+.panel {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--card-shadow);
+  padding: 20px;
+}
+.panel-title { font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
+
+/* ── ドロップゾーン ── */
+#drop-zone {
+  border: 2px dashed rgba(0,117,222,0.3);
+  border-radius: 10px; background: #f0f7ff;
+  padding: 28px 20px; text-align: center; cursor: pointer;
+  transition: all 0.2s; margin-bottom: 16px; position: relative;
+}
+#drop-zone.dragover { border-color: var(--primary); background: #dceeff; }
+#drop-zone p { color: var(--primary); font-size: 14px; font-weight: 600; pointer-events: none; }
+#drop-zone small { color: var(--text-muted); font-size: 12px; pointer-events: none; }
+#file-input { display: none; }
+#img-preview { max-width: 100%; max-height: 180px; border-radius: 6px; margin-top: 10px; display: none; }
+
+/* ── プログレス ── */
+#ocr-progress-wrap { display: none; margin-bottom: 12px; }
+#ocr-progress-bar { width: 100%; height: 6px; border-radius: 3px; appearance: none; background: #e5e7eb; }
+#ocr-progress-bar::-webkit-progress-bar { background: #e5e7eb; border-radius: 3px; }
+#ocr-progress-bar::-webkit-progress-value { background: var(--primary); border-radius: 3px; transition: width 0.2s; }
+#ocr-status { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── OCRテキスト ── */
+#ocr-raw-wrap { display: none; margin-bottom: 14px; }
+#ocr-raw { width: 100%; height: 90px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 8px; resize: vertical; background: var(--bg-warm); color: var(--text-secondary); font-family: monospace; }
+
+/* ── フォーム ── */
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.form-row input, .form-row textarea {
+  width: 100%; padding: 8px 10px; font-size: 14px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--text-main);
+  font-family: inherit; transition: border-color 0.15s;
+}
+.form-row input:focus, .form-row textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,117,222,0.12); }
+.form-row textarea { resize: vertical; height: 72px; }
+.form-row small { font-size: 11px; color: var(--text-muted); }
+.form-row.required label::after { content: ' *'; color: var(--danger); }
+
+/* ── タグ入力 ── */
+#tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; min-height: 38px; cursor: text; }
+#tags-wrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,117,222,0.12); }
+.tag-chip { background: #e8f0fb; color: #1a4f99; border-radius: 4px; padding: 2px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+.tag-chip button { background: none; border: none; cursor: pointer; color: #1a4f99; font-size: 13px; line-height: 1; padding: 0; }
+#tag-input { border: none; outline: none; font-size: 13px; min-width: 80px; flex: 1; color: var(--text-main); background: transparent; }
+
+/* ── ボタン ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:disabled { background: #a0c4f1; cursor: not-allowed; }
+.btn-secondary { background: var(--bg-warm); color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #eae9e7; }
+.btn-danger { background: #fff0f0; color: var(--danger); border: 1px solid rgba(220,38,38,0.2); }
+.btn-danger:hover { background: #fee2e2; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── 一覧 ── */
+#list-section { margin-top: 0; }
+.list-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+.search-input { flex: 1; min-width: 160px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; color: var(--text-main); }
+.search-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,117,222,0.12); }
+#card-count { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+@media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } }
+.biz-card {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--card-shadow); padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.biz-card-name { font-size: 15px; font-weight: 700; color: var(--text-main); }
+.biz-card-company { font-size: 13px; color: var(--primary); font-weight: 600; }
+.biz-card-position { font-size: 12px; color: var(--text-secondary); }
+.biz-card-contact { font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px; }
+.biz-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.biz-card-tag { background: #e8f0fb; color: #1a4f99; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+.biz-card-actions { display: flex; gap: 6px; margin-top: 8px; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-state p { font-size: 15px; margin-top: 8px; }
+
+/* ── モーダル ── */
+#modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.4); align-items: center; justify-content: center;
+  padding: 20px;
+}
+#modal-overlay.open { display: flex; }
+#modal-box {
+  background: #fff; border-radius: var(--radius); padding: 24px;
+  width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+}
+#modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+#modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── トースト ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #37352f; color: #fff; padding: 10px 20px;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  z-index: 99999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- DEMO バナー -->
+<div id="demo-banner">⚠️ これはデモ環境です。入力データは架空のものです。本番環境とは完全に分離されています。</div>
+
+<!-- ナビゲーション -->
+<nav id="main-nav">
+  <a href="ordersystem.html" class="nav-link">👥 顧客管理</a>
+  <a href="invoice.html"     class="nav-link">📄 請求書</a>
+  <a href="groupware.html"   class="nav-link">🏢 グループウェア</a>
+  <a href="timecard.html"    class="nav-link">⏰ 勤怠管理</a>
+  <a href="cards.html"       class="nav-link active">🪪 名刺管理</a>
+  <a href="sakura-os.html"   class="nav-link">🖥️ SAKURA OS</a>
+  <a href="manual-user.html" target="_blank" class="nav-link">📖 使い方ガイド</a>
+  <a href="javascript:void(0)" class="nav-link logout" onclick="doLogout()">🚪 ログアウト</a>
+</nav>
+<div id="spacer"></div>
+
+<!-- メイン -->
+<div id="app">
+  <h1 class="page-title">🪪 SAKURA CARD 名刺管理</h1>
+  <div class="two-col">
+
+    <!-- 左：OCR & フォーム -->
+    <div>
+      <div class="panel" style="margin-bottom:20px;">
+        <p class="panel-title">📷 名刺をスキャン（OCR）</p>
+
+        <div id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <p>クリックまたはドラッグ＆ドロップ</p>
+          <small>JPG / PNG / 最大 20MB</small>
+          <br>
+          <img id="img-preview" alt="プレビュー">
+        </div>
+        <input type="file" id="file-input" accept="image/jpeg,image/png" onchange="onFileSelected(this.files[0])">
+
+        <div id="ocr-progress-wrap">
+          <progress id="ocr-progress-bar" max="100" value="0"></progress>
+          <div id="ocr-status">解析中...</div>
+        </div>
+
+        <div id="ocr-raw-wrap">
+          <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">OCR 抽出テキスト（原文）</label>
+          <textarea id="ocr-raw" readonly></textarea>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="ocr-btn" onclick="runOcr()" disabled>🔍 OCR 実行</button>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">✏️ 名刺情報を入力・編集</p>
+        <form id="card-form" onsubmit="saveCard(event)">
+          <div class="form-row required"><label>氏名</label><input type="text" id="f-name" maxlength="100" placeholder="山田 太郎" required></div>
+          <div class="form-row required"><label>会社名</label><input type="text" id="f-company" maxlength="100" placeholder="株式会社デモ商事" required></div>
+          <div class="form-row"><label>役職</label><input type="text" id="f-position" maxlength="100" placeholder="代表取締役"></div>
+          <div class="form-row"><label>メールアドレス</label><input type="email" id="f-email" maxlength="200" placeholder="taro@example.com"></div>
+          <div class="form-row"><label>電話番号①</label><input type="tel" id="f-tel1" maxlength="50" placeholder="06-1234-5678"></div>
+          <div class="form-row"><label>電話番号②</label><input type="tel" id="f-tel2" maxlength="50" placeholder="090-0000-0000"></div>
+          <div class="form-row"><label>郵便番号</label><input type="text" id="f-zip" maxlength="20" placeholder="530-0001"></div>
+          <div class="form-row"><label>住所</label><input type="text" id="f-address" maxlength="300" placeholder="大阪府大阪市北区..."></div>
+          <div class="form-row"><label>メモ</label><textarea id="f-memo" maxlength="3000" placeholder="備考・商談内容など"></textarea></div>
+          <div class="form-row">
+            <label>タグ <small>（Enter または , で追加）</small></label>
+            <div id="tags-wrap" onclick="document.getElementById('tag-input').focus()"></div>
+            <input type="text" id="tag-input" placeholder="タグを入力..." onkeydown="onTagKeydown(event)" oninput="onTagInput(event)" style="width:100%;margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px;">
+            <button type="submit" class="btn btn-primary" style="flex:1;" id="save-btn">💾 保存</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">🔄 クリア</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 右：一覧 -->
+    <div id="list-section">
+      <div class="panel">
+        <p class="panel-title">📋 登録済み名刺</p>
+        <div class="list-toolbar">
+          <input type="text" class="search-input" id="search-input" placeholder="氏名・会社・タグで検索..." oninput="filterCards()">
+          <span id="card-count">0 件</span>
+        </div>
+        <div class="card-grid" id="card-grid">
+          <div class="empty-state"><p>名刺を登録すると<br>ここに表示されます</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 編集モーダル -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal-box">
+    <p id="modal-title">✏️ 名刺を編集</p>
+    <div id="modal-fields">
+      <div class="form-row required"><label>氏名</label><input type="text" id="m-name" maxlength="100" required></div>
+      <div class="form-row required"><label>会社名</label><input type="text" id="m-company" maxlength="100" required></div>
+      <div class="form-row"><label>役職</label><input type="text" id="m-position" maxlength="100"></div>
+      <div class="form-row"><label>メールアドレス</label><input type="email" id="m-email" maxlength="200"></div>
+      <div class="form-row"><label>電話番号①</label><input type="tel" id="m-tel1" maxlength="50"></div>
+      <div class="form-row"><label>電話番号②</label><input type="tel" id="m-tel2" maxlength="50"></div>
+      <div class="form-row"><label>郵便番号</label><input type="text" id="m-zip" maxlength="20"></div>
+      <div class="form-row"><label>住所</label><input type="text" id="m-address" maxlength="300"></div>
+      <div class="form-row"><label>メモ</label><textarea id="m-memo" maxlength="3000" style="height:80px;"></textarea></div>
+      <div class="form-row"><label>タグ（カンマ区切り）</label><input type="text" id="m-tags" maxlength="500" placeholder="重要, 取引先, フォロー中"></div>
+    </div>
+    <div id="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- トースト -->
+<div id="toast"></div>
+
+<script>
+// ─── 状態 ───
+let allCards = [];
+let tags = [];
+let editDocId = null;
+
+// ─── 初期化 ───
+function initApp() {
+  document.getElementById('app').classList.add('loaded');
+  subscribeCards();
+}
+
+// ─── ログアウト ───
+function doLogout() {
+  if (!confirm('ログアウトしますか？')) return;
+  firebase.auth().signOut()
+    .then(() => { location.href = 'index.html'; })
+    .catch(() => { location.href = 'index.html'; });
+}
+
+// ─── Firestore 購読 ───
+function subscribeCards() {
+  db.collection('demo_business_cards')
+    .where('archived', '==', false)
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snap => {
+      allCards = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      filterCards();
+    }, err => {
+      if (err.code !== 'permission-denied') showToast('データ取得エラー: ' + err.message);
+    });
+}
+
+// ─── フィルタ・描画 ───
+function filterCards() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  const filtered = q
+    ? allCards.filter(c =>
+        (c.name     || '').toLowerCase().includes(q) ||
+        (c.company  || '').toLowerCase().includes(q) ||
+        (c.position || '').toLowerCase().includes(q) ||
+        (c.tags  || []).some(t => t.toLowerCase().includes(q))
+      )
+    : allCards;
+  document.getElementById('card-count').textContent = filtered.length + ' 件';
+  renderCards(filtered);
+}
+
+function renderCards(cards) {
+  const grid = document.getElementById('card-grid');
+  if (cards.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><p>名刺がありません</p></div>';
+    return;
+  }
+  grid.innerHTML = cards.map(c => `
+    <div class="biz-card">
+      <div class="biz-card-name">${esc(c.name)}</div>
+      ${c.company  ? `<div class="biz-card-company">${esc(c.company)}</div>` : ''}
+      ${c.position ? `<div class="biz-card-position">${esc(c.position)}</div>` : ''}
+      <div class="biz-card-contact">
+        ${c.email ? `<span>✉ ${esc(c.email)}</span>` : ''}
+        ${c.tel1  ? `<span>📞 ${esc(c.tel1)}</span>` : ''}
+        ${c.tel2  ? `<span>📱 ${esc(c.tel2)}</span>` : ''}
+        ${c.address ? `<span>📍 ${esc(c.address)}</span>` : ''}
+      </div>
+      ${(c.tags||[]).length ? `<div class="biz-card-tags">${c.tags.map(t=>`<span class="biz-card-tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${c.memo ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c.memo)}">📝 ${esc(c.memo)}</div>` : ''}
+      <div class="biz-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openEdit('${c.id}')">✏️ 編集</button>
+        <button class="btn btn-danger btn-sm" onclick="archiveCard('${c.id}', '${esc(c.name)}')">📁 アーカイブ</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+// ─── ファイル選択・ドラッグ ───
+let selectedFile = null;
+
+function onFileSelected(file) {
+  if (!file) return;
+  if (file.size > 20971520) { showToast('20MB 以内のファイルを選択してください'); return; }
+  if (!['image/jpeg','image/png'].includes(file.type)) { showToast('JPG または PNG を選択してください'); return; }
+  selectedFile = file;
+  const preview = document.getElementById('img-preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  document.getElementById('ocr-btn').disabled = false;
+  document.getElementById('ocr-raw-wrap').style.display = 'none';
+  document.getElementById('ocr-raw').value = '';
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+function onDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) onFileSelected(file);
+}
+
+// ─── OCR 実行 ───
+async function runOcr() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('ocr-btn');
+  btn.disabled = true;
+  btn.textContent = '🔄 解析中...';
+  document.getElementById('ocr-progress-wrap').style.display = 'block';
+  document.getElementById('ocr-raw-wrap').style.display = 'none';
+
+  const progressBar = document.getElementById('ocr-progress-bar');
+  const statusEl = document.getElementById('ocr-status');
+
+  try {
+    const worker = await Tesseract.createWorker('jpn', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round((m.progress || 0) * 100);
+          progressBar.value = pct;
+          statusEl.textContent = `解析中... ${pct}%`;
+        } else {
+          statusEl.textContent = m.status || '処理中...';
+        }
+      }
+    });
+
+    const { data: { text } } = await worker.recognize(selectedFile);
+    await worker.terminate();
+
+    progressBar.value = 100;
+    statusEl.textContent = '解析完了';
+
+    const raw = text || '';
+    document.getElementById('ocr-raw').value = raw;
+    document.getElementById('ocr-raw-wrap').style.display = 'block';
+
+    const fields = extractFields(normalizeLines(raw));
+    fillForm(fields);
+    showToast('OCR 完了。内容を確認して保存してください。');
+  } catch(err) {
+    showToast('OCR エラー: ' + (err.message || '不明'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 OCR 実行';
+    document.getElementById('ocr-progress-wrap').style.display = 'none';
+    // メモリ解放
+    const prev = document.getElementById('img-preview');
+    if (prev.src.startsWith('blob:')) URL.revokeObjectURL(prev.src);
+  }
+}
+
+// ─── OCR 正規化（クリーンルーム実装）───
+function normalizeLines(rawText) {
+  let lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  // 文字間スペース除去: CJK文字+空白+CJK文字 の連続
+  lines = lines.map(line => {
+    let prev = '';
+    while (prev !== line) {
+      prev = line;
+      line = line.replace(/([　-鿿＀-￯])\s+([　-鿿＀-￯])/g, '$1$2');
+    }
+    return line;
+  });
+  return lines;
+}
+
+function extractFields(lines) {
+  const TITLE_KW = ['代表取締役','取締役','専務','常務','部長','課長','係長','主任','マネージャー','ディレクター','Director','Manager','CEO','CTO','CFO','COO','社長'];
+  const CORP_JA  = ['株式会社','有限会社','合同会社','合資会社','一般社団法人','公益財団法人','NPO法人'];
+  const CORP_EN  = ['Inc.','Co.,Ltd','LLC','Corp.','Ltd.','GmbH'];
+
+  let company = '', name = '', position = '', email = '', tel1 = '', tel2 = '', zip = '', address = '';
+
+  const allText = lines.join('\n');
+
+  // Email
+  const emailM = allText.match(/[\w.+\-]+@[\w\-]+\.[\w.\-]+/);
+  if (emailM) email = emailM[0];
+
+  // TEL（日本の電話番号パターン）
+  const telAll = allText.match(/0\d{1,4}[-\s(]?\d{1,4}[-\s)]?\d{3,4}/g) || [];
+  if (telAll[0]) tel1 = telAll[0];
+  if (telAll[1]) tel2 = telAll[1];
+
+  // 郵便番号
+  const zipM = allText.match(/〒?\s*(\d{3}-?\d{4})/);
+  if (zipM) zip = zipM[1];
+
+  // 住所（都道府県で始まる行）
+  const addrPat = /^(?:北海道|東京都|大阪府|京都府|[一-鿿]{2}県)/;
+  const addrLine = lines.find(l => addrPat.test(l));
+  if (addrLine) address = addrLine;
+
+  // 会社名
+  const isCorpLine = l => {
+    if (/^[（(]/.test(l)) return false;
+    return CORP_JA.some(k => l.includes(k)) || CORP_EN.some(k => l.includes(k));
+  };
+  const corpLine = lines.find(isCorpLine);
+  if (corpLine) company = corpLine;
+
+  // 役職 & 氏名
+  const titleIdx = lines.findIndex(l => TITLE_KW.some(k => l.includes(k)));
+  if (titleIdx >= 0) {
+    const titleLine = lines[titleIdx];
+    const foundTitle = TITLE_KW.find(k => titleLine.includes(k));
+    if (foundTitle) position = foundTitle;
+
+    // 同一行から氏名を取り出す
+    let remainder = titleLine.replace(/[（(][^）)]+[）)]/g, '').trim();
+    TITLE_KW.forEach(k => { remainder = remainder.replace(new RegExp(k, 'g'), ''); });
+    remainder = remainder.trim();
+    const nameRe = /^[一-鿿぀-ゟ゠-ヿ]{2,8}(\s+[一-鿿぀-ゟ゠-ヿ]{1,4})?$/;
+    if (remainder && nameRe.test(remainder) && !CORP_JA.some(k => remainder.includes(k))) {
+      name = remainder;
+    } else {
+      // 前後3行から探す
+      for (let i = Math.max(0, titleIdx - 3); i <= Math.min(lines.length - 1, titleIdx + 3); i++) {
+        if (i === titleIdx) continue;
+        const c = lines[i];
+        if (nameRe.test(c) && !CORP_JA.some(k => c.includes(k)) && !isCorpLine(c)) {
+          name = c; break;
+        }
+      }
+    }
+  }
+
+  // 氏名フォールバック（漢字2〜4文字 + スペース + 漢字1〜4文字、または連続漢字3〜6文字）
+  if (!name) {
+    const re1 = /^[一-鿿]{2,4}\s+[一-鿿]{1,4}$/;
+    const re2 = /^[一-鿿]{3,6}$/;
+    for (const l of lines) {
+      if (l === company) continue;
+      if (CORP_JA.some(k => l.includes(k))) continue;
+      if (/^[（(]/.test(l)) continue;
+      if (email && l.includes(email)) continue;
+      if (re1.test(l) || re2.test(l)) { name = l; break; }
+    }
+  }
+
+  return { company, name, position, email, tel1, tel2, zip, address };
+}
+
+// ─── フォーム操作 ───
+function fillForm(fields) {
+  if (fields.name)     document.getElementById('f-name').value     = fields.name;
+  if (fields.company)  document.getElementById('f-company').value  = fields.company;
+  if (fields.position) document.getElementById('f-position').value = fields.position;
+  if (fields.email)    document.getElementById('f-email').value    = fields.email;
+  if (fields.tel1)     document.getElementById('f-tel1').value     = fields.tel1;
+  if (fields.tel2)     document.getElementById('f-tel2').value     = fields.tel2;
+  if (fields.zip)      document.getElementById('f-zip').value      = fields.zip;
+  if (fields.address)  document.getElementById('f-address').value  = fields.address;
+}
+
+function resetForm() {
+  document.getElementById('card-form').reset();
+  tags = [];
+  renderTags();
+  selectedFile = null;
+  document.getElementById('img-preview').style.display = 'none';
+  document.getElementById('img-preview').src = '';
+  document.getElementById('ocr-btn').disabled = true;
+  document.getElementById('ocr-raw-wrap').style.display = 'none';
+  document.getElementById('ocr-raw').value = '';
+}
+
+// ─── タグ管理 ───
+function renderTags() {
+  const wrap = document.getElementById('tags-wrap');
+  wrap.innerHTML = tags.map((t, i) =>
+    `<span class="tag-chip">${esc(t)}<button type="button" onclick="removeTag(${i})" aria-label="削除">×</button></span>`
+  ).join('');
+}
+
+function removeTag(idx) {
+  tags.splice(idx, 1);
+  renderTags();
+}
+
+function addTag(val) {
+  const v = val.trim().replace(/,/g, '');
+  if (!v || tags.includes(v) || tags.length >= 12) return;
+  tags.push(v);
+  renderTags();
+}
+
+function onTagKeydown(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value;
+    addTag(val);
+    e.target.value = '';
+  }
+  if (e.key === 'Backspace' && e.target.value === '' && tags.length > 0) {
+    tags.pop();
+    renderTags();
+  }
+}
+
+function onTagInput(e) {
+  const val = e.target.value;
+  if (val.endsWith(',')) {
+    addTag(val.slice(0, -1));
+    e.target.value = '';
+  }
+}
+
+// ─── 保存 ───
+async function saveCard(e) {
+  e.preventDefault();
+  if (!currentUser) return;
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try {
+    const payload = buildPayload();
+    await db.collection('demo_business_cards').add({
+      ...payload,
+      archived:   false,
+      driveOriginalUrl: '',
+      isDemo:     true,
+      createdBy:  currentUser.uid,
+      createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    showToast('✅ 名刺を保存しました');
+    resetForm();
+  } catch(err) {
+    showToast('保存エラー: ' + (err.message || '不明'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 保存';
+  }
+}
+
+function buildPayload(prefix='f-') {
+  const get = id => (document.getElementById(prefix + id) || {}).value || '';
+  return {
+    name:     get('name').trim(),
+    company:  get('company').trim(),
+    position: get('position').trim(),
+    email:    get('email').trim(),
+    tel1:     get('tel1').trim(),
+    tel2:     get('tel2').trim(),
+    zip:      get('zip').trim(),
+    address:  get('address').trim(),
+    memo:     get('memo').trim(),
+    tags:     prefix === 'f-' ? [...tags] : [],
+  };
+}
+
+// ─── アーカイブ ───
+async function archiveCard(docId, cardName) {
+  if (!confirm(`「${cardName}」をアーカイブしますか？`)) return;
+  try {
+    await db.collection('demo_business_cards').doc(docId).update({
+      archived:   true,
+      archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      archivedBy: currentUser.uid,
+      updatedBy:  currentUser.uid,
+      updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    showToast('📁 アーカイブしました');
+  } catch(err) {
+    showToast('エラー: ' + (err.message || '不明'));
+  }
+}
+
+// ─── 編集モーダル ───
+function openEdit(docId) {
+  const c = allCards.find(x => x.id === docId);
+  if (!c) return;
+  editDocId = docId;
+  document.getElementById('m-name').value     = c.name     || '';
+  document.getElementById('m-company').value  = c.company  || '';
+  document.getElementById('m-position').value = c.position || '';
+  document.getElementById('m-email').value    = c.email    || '';
+  document.getElementById('m-tel1').value     = c.tel1     || '';
+  document.getElementById('m-tel2').value     = c.tel2     || '';
+  document.getElementById('m-zip').value      = c.zip      || '';
+  document.getElementById('m-address').value  = c.address  || '';
+  document.getElementById('m-memo').value     = c.memo     || '';
+  document.getElementById('m-tags').value     = (c.tags || []).join(', ');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  editDocId = null;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+async function saveModal() {
+  if (!editDocId || !currentUser) return;
+  const btn = document.querySelector('#modal-actions .btn-primary');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try {
+    const tagsVal = (document.getElementById('m-tags').value || '')
+      .split(',').map(t => t.trim()).filter(Boolean).slice(0, 12);
+    const payload = {
+      name:      (document.getElementById('m-name').value     || '').trim(),
+      company:   (document.getElementById('m-company').value  || '').trim(),
+      position:  (document.getElementById('m-position').value || '').trim(),
+      email:     (document.getElementById('m-email').value    || '').trim(),
+      tel1:      (document.getElementById('m-tel1').value     || '').trim(),
+      tel2:      (document.getElementById('m-tel2').value     || '').trim(),
+      zip:       (document.getElementById('m-zip').value      || '').trim(),
+      address:   (document.getElementById('m-address').value  || '').trim(),
+      memo:      (document.getElementById('m-memo').value     || '').trim(),
+      tags:      tagsVal,
+      driveOriginalUrl: '',
+      isDemo:    true,
+      updatedBy: currentUser.uid,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    if (!payload.name || !payload.company) { showToast('氏名と会社名は必須です'); return; }
+    await db.collection('demo_business_cards').doc(editDocId).update(payload);
+    showToast('✅ 更新しました');
+    closeModal();
+  } catch(err) {
+    showToast('更新エラー: ' + (err.message || '不明'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
+  }
+}
+
+// ─── トースト ───
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

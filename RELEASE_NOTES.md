@@ -1,4 +1,45 @@
 # SAKURA SYSTEM デモ環境 リリースノート
+
+## v0.4.3 (2026-05-16) - 名刺管理 cards.html 追加（Phase 2-C）
+
+### 追加
+- `cards.html`: 名刺管理ページ（ブラウザ内 Tesseract.js OCR / 画像保存なし / Spark plan 対応）
+  - D&Dファイル選択 → Tesseract.js OCR → フィールド自動入力 → Firestore 保存
+  - OCR正規化ロジック（文字間スペース除去・役職同一行氏名抽出・カッコ書き対応）クリーンルーム実装
+  - カード一覧（検索・タグフィルタ・アーカイブ・編集モーダル）
+  - GAS / Drive / Firebase Storage / Cloud Vision 不使用（個人情報外部送信ゼロ）
+  - `driveOriginalUrl: ''`固定・画像は保存しない
+- `scripts/check_forbidden_strings.js`: GAS/Drive関連禁止文字列ガード（cards.html 検査）
+
+### 修正
+- `firestore.rules`: `demo_business_cards` の allowlist から `imageUrl` を削除、`driveOriginalUrl`（空文字固定）追加（v3.4方針）
+
+### テスト追加
+- `tests/firebase-rules.test.js`: TC-08 修正（`extraField`）/ TC-20・TC-21 追加（driveOriginalUrl 検証）
+- Rules UT: **27/27 PASS**
+
+### ナビ追加（「🪪 名刺管理」リンク）
+- `ordersystem.html` / `invoice.html` / `groupware.html` / `sakura-os.html`（タイル・allowlist）/ `timecard.html`
+
+### WinSCP アップロード対象（サーバーパス: `/home/sakura-nets/www/demo/`）
+| ファイル | 変更 |
+|---------|------|
+| `cards.html` | ✨ 新規 |
+| `firestore.rules` | ルール修正 |
+| `ordersystem.html` | ナビ追加 |
+| `invoice.html` | ナビ追加 |
+| `groupware.html` | ナビ追加 |
+| `timecard.html` | ナビ追加 |
+| `sakura-os.html` | タイル＋allowlist追加 |
+| `scripts/check_forbidden_strings.js` | ✨ 新規 |
+| `tests/firebase-rules.test.js` | TC修正・追加 |
+| `RELEASE_NOTES.md` | 本項目追加 |
+
+### バックアップ
+- `backups/v0.4.3_card_demo_pre_20260516/`（9ファイル）
+
+---
+
 ## v0.4.2 (2026-05-15) - Timecard ACL hardening
 
 ### Live Deployment Follow-up

@@ -248,10 +248,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // demo_business_cards（v3.3 名刺管理）
+    // demo_business_cards（v3.4 名刺管理 / 画像保存なし）
     function demoCardFieldsValid() {
       let allowed = ['name','company','position','email','tel1','tel2',
-                     'zip','address','memo','tags','imageUrl',
+                     'zip','address','memo','tags','driveOriginalUrl',
                      'isDemo','createdAt','updatedAt','createdBy','updatedBy',
                      'archived','archivedAt','archivedBy'];
       let d = request.resource.data;
@@ -265,7 +265,7 @@ service cloud.firestore {
           && (!('zip'      in d) || (d.zip      is string && d.zip.size()      <= 20))
           && (!('address'  in d) || (d.address  is string && d.address.size()  <= 300))
           && (!('memo'     in d) || (d.memo     is string && d.memo.size()     <= 3000))
-          && (!('imageUrl' in d) || (d.imageUrl is string && d.imageUrl.size() <= 2000))
+          && (!('driveOriginalUrl' in d) || (d.driveOriginalUrl is string && d.driveOriginalUrl.size() == 0))
           && (!('tags'     in d) || (
               d.tags is list
               && d.tags.size() <= 12
